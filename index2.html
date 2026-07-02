@@ -7,10 +7,10 @@
     <title>Spendy Premium</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for beautiful reporting -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -40,20 +40,30 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+
+        /* Prevent bounce scroll on iOS */
+        html,
+        body {
+            overscroll-behavior-y: none;
+        }
     </style>
 </head>
 
-<body class="bg-slate-900 font-sans text-slate-800 antialiased flex justify-center min-h-screen md:py-8">
+<body class="bg-slate-900 font-sans text-slate-800 antialiased flex justify-center h-screen overflow-hidden md:py-8">
 
     <!-- MOBILE CONTAINER PREVIEW -->
+    <!-- h-full and overflow-hidden ensures the container never scrolls as a whole -->
     <div
-        class="w-full max-w-md bg-slate-50 min-h-[100vh] md:min-h-[85vh] md:rounded-3xl shadow-2xl flex flex-col relative overflow-hidden pb-20 border border-slate-800/10">
+        class="w-full max-w-md bg-slate-50 h-full md:max-h-[85vh] md:rounded-[2rem] shadow-2xl flex flex-col relative overflow-hidden border border-slate-800/10">
 
         <!-- ==================== TAB 1: HOME ==================== -->
-        <section id="tab-home" class="flex-1 flex flex-col overflow-y-auto hide-scrollbar">
+        <!-- flex-1 and overflow-y-auto makes ONLY the content scrollable -->
+        <!-- pb-24 adds space at the bottom so content doesn't hide behind the navbar -->
+        <section id="tab-home" class="flex-1 flex flex-col overflow-y-auto hide-scrollbar pb-24">
+
             <!-- Top Banner Card -->
             <div
-                class="bg-gradient-to-br from-teal-800 to-teal-900 text-white px-6 pt-8 pb-14 rounded-b-[2.5rem] shadow-xl relative">
+                class="bg-gradient-to-br from-teal-800 to-teal-900 text-white px-6 pt-8 pb-14 rounded-b-[2.5rem] shadow-xl relative shrink-0">
                 <div class="flex justify-between items-center mb-6">
                     <div>
                         <p class="text-xs text-teal-200 uppercase tracking-wider font-semibold">Selamat Datang</p>
@@ -70,13 +80,11 @@
                     </button>
                 </div>
 
-                <!-- Main Balance Display -->
                 <div class="space-y-1">
                     <p class="text-xs text-teal-200 font-medium">Total Pengeluaran Bulan Ini</p>
                     <h2 id="homeTotalAmount" class="text-3xl font-black tracking-tight">Rp0</h2>
                 </div>
 
-                <!-- Small stats row decoration -->
                 <div
                     class="absolute -bottom-8 left-6 right-6 bg-white rounded-2xl p-4 shadow-lg text-slate-800 grid grid-cols-2 gap-4 border border-slate-100">
                     <div class="border-r border-slate-100">
@@ -90,28 +98,22 @@
                 </div>
             </div>
 
-            <!-- Content Area -->
-            <div class="mt-12 px-6 space-y-6 flex-1">
-                <!-- Section Title -->
+            <div class="mt-14 px-6 space-y-4 flex-1">
                 <div class="flex justify-between items-center">
                     <h3 class="font-bold text-slate-800 tracking-tight text-base">Aktivitas Terakhir</h3>
                     <button onclick="switchTab('transactions')"
                         class="text-xs font-bold text-teal-600 hover:text-teal-700">Lihat Semua</button>
                 </div>
-
-                <!-- Recent items list wrapper -->
                 <div id="homeRecentFeed" class="space-y-3 pb-6">
-                    <!-- Loaded dynamically -->
+                    <div class="text-center py-4 text-xs text-slate-400">Memuat data...</div>
                 </div>
             </div>
         </section>
 
         <!-- ==================== TAB 2: TRANSAKSI ==================== -->
-        <section id="tab-transactions" class="hidden flex-1 flex flex-col overflow-hidden">
-            <!-- Header Fixed -->
-            <div class="p-6 bg-white border-b border-slate-100 shrink-0">
-                <h2 class="text-xl font-bold text-slate-800 tracking-tight mb-3">Riwayat Transaksi</h2>
-                <!-- Filter Controls -->
+        <section id="tab-transactions" class="hidden flex-1 flex flex-col overflow-hidden pb-24">
+            <div class="p-6 pb-4 bg-white border-b border-slate-100 shrink-0 z-10 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-800 tracking-tight mb-4">Riwayat Transaksi</h2>
                 <div class="flex gap-2">
                     <div class="relative flex-1">
                         <select id="filterCategory" onchange="filterAndRenderTransactions()"
@@ -134,17 +136,17 @@
                 </div>
             </div>
 
-            <!-- Scrollable List Feed -->
-            <div id="transactionFeed" class="flex-1 p-6 space-y-4 overflow-y-auto bg-slate-50 hide-scrollbar">
+            <!-- This area scrolls -->
+            <div id="transactionFeed" class="flex-1 p-6 space-y-3 overflow-y-auto bg-slate-50 hide-scrollbar">
                 <!-- Loaded dynamically -->
             </div>
         </section>
 
         <!-- ==================== TAB 3: LAPORAN ==================== -->
-        <section id="tab-reports" class="hidden flex-1 flex flex-col overflow-y-auto hide-scrollbar p-6 space-y-6">
+        <section id="tab-reports"
+            class="hidden flex-1 flex flex-col overflow-y-auto hide-scrollbar p-6 space-y-6 pb-24">
             <h2 class="text-xl font-bold text-slate-800 tracking-tight">Analisis Keuangan</h2>
 
-            <!-- Category Chart Card -->
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
                 <h3 class="font-bold text-slate-700 text-sm">Persentase Kategori</h3>
                 <div class="relative w-full max-w-[200px] mx-auto">
@@ -152,7 +154,6 @@
                 </div>
             </div>
 
-            <!-- Source Chart Card -->
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
                 <h3 class="font-bold text-slate-700 text-sm">Alokasi Sumber Dana</h3>
                 <div class="relative w-full h-[180px]">
@@ -160,7 +161,6 @@
                 </div>
             </div>
 
-            <!-- Top Expense Items Card -->
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
                 <h3 class="font-bold text-slate-700 text-sm">Aliran Dana Terbesar</h3>
                 <div id="reportTopExpenses" class="space-y-3">
@@ -170,22 +170,21 @@
         </section>
 
         <!-- ==================== TAB 4: SETTINGS ==================== -->
-        <section id="tab-settings" class="hidden flex-1 flex flex-col overflow-y-auto hide-scrollbar p-6 space-y-6">
+        <section id="tab-settings"
+            class="hidden flex-1 flex flex-col overflow-y-auto hide-scrollbar p-6 space-y-6 pb-24">
             <h2 class="text-xl font-bold text-slate-800 tracking-tight">Pengaturan App</h2>
 
-            <!-- Profile Info Menu -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
                 <div
-                    class="w-12 h-12 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg">
+                    class="w-12 h-12 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg shrink-0">
                     CA
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-800 text-sm">Cahya Adi Saputra, A.Md.</h3>
-                    <p class="text-xs text-slate-400 font-medium">Sistem Analis & Developer</p>
+                    <h3 class="font-bold text-slate-800 text-sm">Cahya Adi Saputra</h3>
+                    <p class="text-xs text-slate-400 font-medium">Developer & Analyst</p>
                 </div>
             </div>
 
-            <!-- Action Options -->
             <div
                 class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden divide-y divide-slate-100">
                 <button onclick="exportToCSV()"
@@ -199,10 +198,6 @@
                         </svg>
                         <span class="text-sm font-semibold">Unduh Rekap Data (CSV)</span>
                     </div>
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2.5"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
-                    </svg>
                 </button>
 
                 <a href="https://docs.google.com/spreadsheets/d/1TvPCfI6OjLRqWNv7IqSyTOccxbiiCEgY6N32F3QCfkY/"
@@ -216,110 +211,104 @@
                         </svg>
                         <span class="text-sm font-semibold">Buka Google Sheets Asli</span>
                     </div>
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2.5"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
-                    </svg>
                 </a>
             </div>
 
-            <!-- Version Info -->
             <div class="text-center text-[11px] text-slate-400 font-medium pt-4">
-                Spendy Engine v2.0 • Serverless Cloud Architecture
+                Spendy App v2.1 • Native Web PWA
             </div>
         </section>
 
-        <!-- ==================== PREMIUM BOTTOM NAV BAR WITH FAB ==================== -->
+        <!-- ==================== PREMIUM BOTTOM NAV BAR ==================== -->
+        <!-- Fixed to the bottom of the container -->
         <nav
-            class="absolute bottom-0 left-0 right-0 h-20 bg-white border-t border-slate-200/80 px-4 flex items-center justify-between z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
-            <!-- Nav Item 1: Home -->
+            class="absolute bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200/80 px-4 flex items-center justify-between z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.04)]">
             <button onclick="switchTab('home')" id="nav-home"
-                class="flex flex-col items-center justify-center w-14 h-14 text-teal-600 transition duration-200">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                class="flex flex-col items-center justify-center w-14 h-full text-teal-600 transition duration-200">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
                     </path>
                 </svg>
-                <span class="text-[10px] font-bold mt-1">Home</span>
+                <span class="text-[10px] font-bold mt-0.5">Home</span>
             </button>
 
-            <!-- Nav Item 2: History -->
             <button onclick="switchTab('transactions')" id="nav-transactions"
-                class="flex flex-col items-center justify-center w-14 h-14 text-slate-400 transition duration-200 mr-6">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                class="flex flex-col items-center justify-center w-14 h-full text-slate-400 transition duration-200 mr-8">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
                     </path>
                 </svg>
-                <span class="text-[10px] font-bold mt-1">Transaksi</span>
+                <span class="text-[10px] font-bold mt-0.5">Transaksi</span>
             </button>
 
-            <!-- CENTRAL FLOATING ACTION BUTTON (FAB) -->
-            <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-5">
-                <button onclick="bukaModalTambah()"
-                    class="w-14 h-14 bg-gradient-to-br from-teal-600 to-teal-700 text-white rounded-full flex items-center justify-center shadow-lg hover:from-teal-700 hover:to-teal-800 transition duration-200 active:scale-95 border-4 border-slate-50">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                </button>
-            </div>
+            <!-- Spacing for the FAB -->
+            <div class="w-14"></div>
 
-            <!-- Nav Item 3: Reports -->
             <button onclick="switchTab('reports')" id="nav-reports"
-                class="flex flex-col items-center justify-center w-14 h-14 text-slate-400 transition duration-200 ml-6">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                class="flex flex-col items-center justify-center w-14 h-full text-slate-400 transition duration-200 ml-8">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M11 3.055A9.003 9.003 0 1020.945 13H11V3.055z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
                 </svg>
-                <span class="text-[10px] font-bold mt-1">Laporan</span>
+                <span class="text-[10px] font-bold mt-0.5">Laporan</span>
             </button>
 
-            <!-- Nav Item 4: Settings -->
             <button onclick="switchTab('settings')" id="nav-settings"
-                class="flex flex-col items-center justify-center w-14 h-14 text-slate-400 transition duration-200">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                class="flex flex-col items-center justify-center w-14 h-full text-slate-400 transition duration-200">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
                     </path>
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                 </svg>
-                <span class="text-[10px] font-bold mt-1">Setting</span>
+                <span class="text-[10px] font-bold mt-0.5">Setting</span>
             </button>
         </nav>
+
+        <!-- CENTRAL FLOATING ACTION BUTTON (FAB) -->
+        <!-- Moved OUTSIDE the nav to fix absolute positioning and clickability bugs -->
+        <button onclick="bukaModalTambah()"
+            class="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-[60px] h-[60px] bg-gradient-to-br from-teal-500 to-teal-700 text-white rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(13,148,136,0.4)] hover:from-teal-600 hover:to-teal-800 transition duration-200 active:scale-90 border-[5px] border-slate-50 z-40">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+            </svg>
+        </button>
 
     </div>
 
     <!-- ==================== UI OVERLAYS & DIALOGS ==================== -->
 
-    <!-- Modal Input Sheet -->
     <div id="formModal"
-        class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div
-            class="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-slide-up">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h2 id="modalTitle" class="font-bold text-lg text-slate-800">Catat Transaksi</h2>
-                <button onclick="tutupModal()" class="text-slate-400 hover:text-slate-600 p-1">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            class="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-slide-up relative">
+            <div class="flex justify-between items-center border-b pb-4 mb-2">
+                <h2 id="modalTitle" class="font-bold text-lg text-slate-800 tracking-tight">Catat Transaksi</h2>
+                <button type="button" onclick="tutupModal()"
+                    class="text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full p-1.5 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
             </div>
 
-            <form id="expenseForm" class="space-y-4 text-xs font-medium">
+            <form id="expenseForm" class="space-y-4 text-sm font-medium pb-2">
                 <input type="hidden" id="editRowIndex" value="">
 
                 <div>
-                    <label class="block font-bold text-slate-600 mb-1">Tanggal</label>
+                    <label class="block font-bold text-slate-700 mb-1.5">Tanggal</label>
                     <input type="date" id="date" required
-                        class="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-teal-600">
+                        class="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 transition">
                 </div>
 
                 <div>
-                    <label class="block font-bold text-slate-600 mb-1">Kategori</label>
+                    <label class="block font-bold text-slate-700 mb-1.5">Kategori</label>
                     <select id="category" required
-                        class="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-teal-600">
+                        class="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 transition appearance-none">
                         <option value="Food">Food</option>
                         <option value="Transport">Transport</option>
                         <option value="Other">Other</option>
@@ -327,15 +316,15 @@
                 </div>
 
                 <div>
-                    <label class="block font-bold text-slate-600 mb-1">Jumlah (Rp)</label>
+                    <label class="block font-bold text-slate-700 mb-1.5">Jumlah (Rp)</label>
                     <input type="number" id="amount" placeholder="Masukkan Nominal..." required
-                        class="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 font-black text-lg text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-600">
+                        class="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 font-black text-xl text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 transition placeholder-slate-300">
                 </div>
 
                 <div>
-                    <label class="block font-bold text-slate-600 mb-1">Sumber Dana</label>
+                    <label class="block font-bold text-slate-700 mb-1.5">Sumber Dana</label>
                     <select id="source" required
-                        class="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-teal-600">
+                        class="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 transition appearance-none">
                         <option value="Cash">Cash</option>
                         <option value="E-Wallet">E-Wallet</option>
                         <option value="Bank Transfer">Bank Transfer</option>
@@ -343,14 +332,14 @@
                 </div>
 
                 <div>
-                    <label class="block font-bold text-slate-600 mb-1">Catatan</label>
+                    <label class="block font-bold text-slate-700 mb-1.5">Catatan</label>
                     <input type="text" id="notes" placeholder="Tulis rincian pengeluaran..."
-                        class="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 font-medium focus:outline-none focus:ring-2 focus:ring-teal-600">
+                        class="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 transition">
                 </div>
 
-                <div class="pt-2">
+                <div class="pt-4">
                     <button type="submit" id="submitBtn"
-                        class="w-full bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition duration-200 text-sm active:scale-[0.99]">
+                        class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition duration-200 text-base active:scale-[0.98]">
                         Simpan Transaksi
                     </button>
                 </div>
@@ -358,47 +347,42 @@
         </div>
     </div>
 
-    <!-- Backdrop Loading Indicator -->
     <div id="loadingBackdrop"
-        class="hidden fixed inset-0 bg-black/30 backdrop-blur-xs z-50 flex items-center justify-center">
+        class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center">
         <div
-            class="bg-white p-5 rounded-2xl shadow-2xl flex flex-col items-center justify-center space-y-3 border border-slate-100">
-            <div class="animate-spin rounded-full h-9 w-9 border-[3.5px] border-teal-600 border-t-transparent"></div>
-            <p class="text-[10px] font-bold text-slate-400 tracking-wider uppercase">Sinkronisasi Cloud...</p>
+            class="bg-white p-6 rounded-3xl shadow-2xl flex flex-col items-center justify-center space-y-4 border border-slate-100 scale-110">
+            <div class="animate-spin rounded-full h-10 w-10 border-[4px] border-slate-100 border-t-teal-600"></div>
+            <p class="text-[11px] font-extrabold text-slate-500 tracking-widest uppercase">Sinkronisasi...</p>
         </div>
     </div>
 
-    <!-- Growl / Toast Notification Box -->
     <div id="growlToast"
-        class="fixed top-6 left-1/2 -translate-x-1/2 z-50 transform scale-0 opacity-0 transition-all duration-300 ease-out max-w-xs w-full px-4">
+        class="fixed top-6 left-1/2 -translate-x-1/2 z-[70] transform scale-0 opacity-0 transition-all duration-300 ease-out max-w-xs w-full px-4">
         <div id="growlBg"
-            class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-white/10">
-            <span id="growlIcon" class="text-base">✨</span>
-            <p id="growlText" class="text-xs font-semibold tracking-wide"></p>
+            class="bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10">
+            <span id="growlIcon" class="text-lg">✨</span>
+            <p id="growlText" class="text-sm font-semibold tracking-wide"></p>
         </div>
     </div>
 
-
-    <!-- ==================== LOGIC & SCRIPT SYSTEM ==================== -->
+    <!-- ==================== JAVASCRIPT ENGINE ==================== -->
     <script>
-
         const API_URL = "https://script.google.com/macros/s/AKfycbzSF2zAHlG6MiOl5EhHTl_b9eHKS-UK8XO7imELEpyILgQIrLR5-o6QequuUgktPCaevg/exec";
+        const today = new Date().toISOString().split('T')[0];
+        window.expenseList = [];
         let activeTab = 'home';
         let catChartInstance = null;
         let srcChartInstance = null;
 
-        // FORMAT RUPIAH UTILITY
         function formatRupiah(value) {
             let num = Number(String(value).replace(/[^0-9]/g, '')) || 0;
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
         }
 
-        // LOADER UTILITY
         function setLoader(show) {
             document.getElementById('loadingBackdrop').classList.toggle('hidden', !show);
         }
 
-        // GROWL MANAGER
         function showGrowl(message, type = 'success') {
             const toast = document.getElementById('growlToast');
             const bg = document.getElementById('growlBg');
@@ -407,32 +391,27 @@
 
             text.innerText = message;
             if (type === 'error') {
-                bg.className = "bg-red-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce";
+                bg.className = "bg-rose-500 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce";
                 icon.innerText = "⚠️";
             } else {
-                bg.className = "bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-white/10";
+                bg.className = "bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10";
                 icon.innerText = "✨";
             }
 
             toast.classList.remove('scale-0', 'opacity-0');
             toast.classList.add('scale-100', 'opacity-100');
-
             setTimeout(() => {
                 toast.classList.remove('scale-100', 'opacity-100');
                 toast.classList.add('scale-0', 'opacity-0');
             }, 3000);
         }
 
-        // TABS NAVIGATION CONTROLLER (SPA)
         function switchTab(tabId) {
             activeTab = tabId;
             const tabs = ['home', 'transactions', 'reports', 'settings'];
 
-            // Toggle Section Visibility
             tabs.forEach(t => {
                 document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tabId);
-
-                // Reset Nav Style
                 const navBtn = document.getElementById(`nav-${t}`);
                 if (t === tabId) {
                     navBtn.classList.replace('text-slate-400', 'text-teal-600');
@@ -441,13 +420,9 @@
                 }
             });
 
-            // Special trigger when entering report tab to initialize Chart.js
-            if (tabId === 'reports') {
-                renderCharts();
-            }
+            if (tabId === 'reports') renderCharts();
         }
 
-        // MODAL TOGGLER
         function bukaModalTambah() {
             resetForm();
             document.getElementById('formModal').classList.remove('hidden');
@@ -456,7 +431,6 @@
             document.getElementById('formModal').classList.add('hidden');
         }
 
-        // CORE READ OPERATION & ENGINE SUMMARY AGGREGATOR
         function loadData() {
             setLoader(true);
             fetch(API_URL)
@@ -464,7 +438,6 @@
                 .then(data => {
                     window.expenseList = data;
 
-                    // 1. Process Dashboard Figures
                     let totalAmount = 0;
                     data.forEach(row => {
                         let num = Number(String(row.amount).replace(/[^0-9]/g, '')) || 0;
@@ -473,46 +446,32 @@
 
                     document.getElementById('homeTotalAmount').innerText = formatRupiah(totalAmount);
                     document.getElementById('homeTotalCount').innerText = `${data.length} Data`;
+                    document.getElementById('homeDailyAvg').innerText = formatRupiah(data.length > 0 ? Math.round(totalAmount / 30) : 0);
 
-                    let dailyAvg = data.length > 0 ? Math.round(totalAmount / 30) : 0; // Simple month allocation breakdown
-                    document.getElementById('homeDailyAvg').innerText = formatRupiah(dailyAvg);
-
-                    // 2. Render Home Tab: Recent 3 Transactions
                     renderHomeRecent(data);
-
-                    // 3. Render Transactions Tab
                     filterAndRenderTransactions();
-
-                    // If user currently on report tab, reload charts as well
-                    if (activeTab === 'reports') {
-                        renderCharts();
-                    }
+                    if (activeTab === 'reports') renderCharts();
                 })
                 .catch(err => {
-                    console.error(err);
+                    console.error("Load Data Error:", err);
                     showGrowl("Koneksi cloud terputus.", "error");
                 })
                 .finally(() => setLoader(false));
         }
 
-        // RENDER HOME RECENT FEED
         function renderHomeRecent(data) {
             const feed = document.getElementById('homeRecentFeed');
             feed.innerHTML = '';
-
             if (data.length === 0) {
-                feed.innerHTML = '<div class="text-center py-4 text-xs text-slate-400">Belum ada aktivitas.</div>';
+                feed.innerHTML = '<div class="text-center py-4 text-xs font-semibold text-slate-400 bg-slate-100/50 rounded-xl border border-slate-100">Belum ada aktivitas.</div>';
                 return;
             }
-
             let limit = Math.min(data.length, 3);
             for (let i = data.length - 1; i >= data.length - limit; i--) {
-                const row = data[i];
-                feed.appendChild(createMobileCard(row, i));
+                feed.appendChild(createMobileCard(data[i], i));
             }
         }
 
-        // FILTER & RENDER TRANSACTIONS TAB FEED
         function filterAndRenderTransactions() {
             const feed = document.getElementById('transactionFeed');
             const catFilter = document.getElementById('filterCategory').value;
@@ -520,30 +479,24 @@
 
             feed.innerHTML = '';
             const data = window.expenseList || [];
-
             let filteredCount = 0;
+
             for (let i = data.length - 1; i >= 0; i--) {
                 const row = data[i];
-
-                // Match filters
                 if (catFilter !== 'ALL' && row.category !== catFilter) continue;
                 if (srcFilter !== 'ALL' && row.source !== srcFilter) continue;
-
                 feed.appendChild(createMobileCard(row, i));
                 filteredCount++;
             }
 
             if (filteredCount === 0) {
-                feed.innerHTML = '<div class="text-center py-12 text-xs text-slate-400">Tidak ada transaksi yang cocok.</div>';
+                feed.innerHTML = '<div class="text-center py-12 text-xs font-semibold text-slate-400">Tidak ada transaksi yang cocok.</div>';
             }
         }
 
-        // DOM CARD GENERATOR FACTORY
         function createMobileCard(row, index) {
             let displayAmount = row.amount || '0';
-            if (!String(displayAmount).includes('Rp')) {
-                displayAmount = formatRupiah(displayAmount);
-            }
+            if (!String(displayAmount).includes('Rp')) displayAmount = formatRupiah(displayAmount);
 
             let badgeStyle = "bg-slate-100 text-slate-600 border-slate-200";
             if (row.category === 'Food') badgeStyle = "bg-orange-50 text-orange-600 border-orange-100";
@@ -551,57 +504,44 @@
             if (row.category === 'Other') badgeStyle = "bg-purple-50 text-purple-600 border-purple-100";
 
             const div = document.createElement('div');
-            div.className = "bg-white border border-slate-100 rounded-2xl p-4 shadow-xs flex justify-between items-center transition active:bg-slate-50";
+            div.className = "bg-white border border-slate-200/60 rounded-[1.25rem] p-4 shadow-sm flex justify-between items-center transition active:bg-slate-50 active:scale-[0.98]";
             div.innerHTML = `
-                <div class="space-y-1 min-w-0 flex-1 pr-3">
+                <div class="space-y-1.5 min-w-0 flex-1 pr-3">
                     <div class="flex items-center gap-2">
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeStyle}">${row.category || 'Other'}</span>
-                        <span class="text-[10px] text-slate-400 font-medium">${row.date || ''}</span>
+                        <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-lg border ${badgeStyle}">${row.category || 'Other'}</span>
+                        <span class="text-[10px] text-slate-400 font-bold">${row.date || ''}</span>
                     </div>
-                    <h4 class="font-bold text-slate-800 text-sm truncate">${row.notes && row.notes !== '-' ? row.notes : 'Transaksi Tanpa Catatan'}</h4>
-                    <p class="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                    <h4 class="font-bold text-slate-800 text-sm truncate">${row.notes && row.notes !== '-' ? row.notes : 'Tanpa Catatan'}</h4>
+                    <p class="text-[11px] text-slate-400 font-semibold flex items-center gap-1.5">
                         <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> ${row.source || 'Cash'}
                     </p>
                 </div>
                 <div class="text-right flex flex-col items-end space-y-2 shrink-0">
-                    <span class="font-black text-slate-900 text-sm">${displayAmount}</span>
-                    <div class="flex items-center gap-2 text-xs font-bold">
-                        <button onclick="siapkanEdit(${index})" class="text-teal-600 hover:underline">Edit</button>
-                        <span class="text-slate-200">|</span>
-                        <button onclick="hapusData(${row.rowindex})" class="text-rose-500 hover:underline">Hapus</button>
+                    <span class="font-black text-slate-900 text-[15px]">${displayAmount}</span>
+                    <div class="flex items-center gap-3 text-[11px] font-bold">
+                        <button onclick="siapkanEdit(${index})" class="text-teal-600 hover:text-teal-700 bg-teal-50 px-2.5 py-1 rounded-md">Edit</button>
+                        <button onclick="hapusData(${row.rowindex})" class="text-rose-500 hover:text-rose-600 bg-rose-50 px-2.5 py-1 rounded-md">Hapus</button>
                     </div>
                 </div>
             `;
             return div;
         }
 
-        // ==================== TAB 3: REPORT CHARTING SYSTEM (CHART.JS) ====================
         function renderCharts() {
             const data = window.expenseList || [];
-
-            // Accumulator stores
             let catMap = { 'Food': 0, 'Transport': 0, 'Other': 0 };
             let srcMap = { 'Cash': 0, 'E-Wallet': 0, 'Bank Transfer': 0 };
             let expenseItems = [];
 
             data.forEach(row => {
                 let num = Number(String(row.amount).replace(/[^0-9]/g, '')) || 0;
-
                 if (catMap[row.category] !== undefined) catMap[row.category] += num;
                 else catMap['Other'] += num;
-
                 if (srcMap[row.source] !== undefined) srcMap[row.source] += num;
                 else srcMap['Cash'] += num;
-
-                expenseItems.push({
-                    notes: row.notes,
-                    category: row.category,
-                    amount: num,
-                    date: row.date
-                });
+                expenseItems.push({ notes: row.notes, category: row.category, amount: num, date: row.date });
             });
 
-            // Top Financial Drain lists
             expenseItems.sort((a, b) => b.amount - a.amount);
             const topListContainer = document.getElementById('reportTopExpenses');
             topListContainer.innerHTML = '';
@@ -613,61 +553,47 @@
                 div.className = "flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100";
                 div.innerHTML = `
                     <div class="min-w-0 flex-1 pr-2">
-                        <p class="text-xs font-bold text-slate-800 truncate">${item.notes && item.notes !== '-' ? item.notes : 'Pengeluaran tanpa catatan'}</p>
+                        <p class="text-xs font-bold text-slate-800 truncate">${item.notes && item.notes !== '-' ? item.notes : 'Tanpa catatan'}</p>
                         <p class="text-[10px] font-semibold text-slate-400 mt-0.5">${item.category} • ${item.date}</p>
                     </div>
                     <span class="font-bold text-rose-600 text-xs shrink-0">${formatRupiah(item.amount)}</span>
                 `;
                 topListContainer.appendChild(div);
             }
-            if (expenseItems.length === 0) {
-                topListContainer.innerHTML = '<div class="text-center py-2 text-xs text-slate-400">Belum cukup data.</div>';
-            }
+            if (expenseItems.length === 0) topListContainer.innerHTML = '<div class="text-center py-2 text-xs font-semibold text-slate-400">Belum ada data.</div>';
 
-            // DESTROY PREVIOUS INSTANCES TO PREVENT CANVAS GRAPHIC GLITCHES
             if (catChartInstance) catChartInstance.destroy();
             if (srcChartInstance) srcChartInstance.destroy();
 
-            // Build Pie Chart (Categories)
             const catCtx = document.getElementById('categoryChartCtx').getContext('2d');
             catChartInstance = new Chart(catCtx, {
                 type: 'pie',
                 data: {
                     labels: Object.keys(catMap),
-                    datasets: [{
-                        data: Object.values(catMap),
-                        backgroundColor: ['#f97316', '#3b82f6', '#a855f7'],
-                        borderWidth: 0
-                    }]
+                    datasets: [{ data: Object.values(catMap), backgroundColor: ['#f97316', '#3b82f6', '#a855f7'], borderWidth: 0 }]
                 },
-                options: {
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } } }
-                }
+                options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11, family: "'Plus Jakarta Sans', sans-serif", weight: 'bold' } } } } }
             });
 
-            // Build Bar Chart (Sources Allocation)
             const srcCtx = document.getElementById('sourceChartCtx').getContext('2d');
             srcChartInstance = new Chart(srcCtx, {
                 type: 'bar',
                 data: {
                     labels: Object.keys(srcMap),
-                    datasets: [{
-                        label: 'Total Rupiah',
-                        data: Object.values(srcMap),
-                        backgroundColor: '#0d9488',
-                        borderRadius: 8
-                    }]
+                    datasets: [{ label: 'Total Rupiah', data: Object.values(srcMap), backgroundColor: '#0f766e', borderRadius: 8 }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } },
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false, drawBorder: false }, ticks: { font: { family: "'Plus Jakarta Sans', sans-serif" } } },
+                        x: { grid: { display: false, drawBorder: false }, ticks: { font: { family: "'Plus Jakarta Sans', sans-serif", weight: 'bold' } } }
+                    },
                     plugins: { legend: { display: false } }
                 }
             });
         }
 
-        // CREATE & UPDATE HANDLER
+        // ==================== FIX: SUBMIT FORM HANDLER ====================
         document.getElementById('expenseForm').addEventListener('submit', function (e) {
             e.preventDefault();
             tutupModal();
@@ -686,24 +612,25 @@
                 notes: document.getElementById('notes').value
             };
 
+            // FIX: Using text/plain ensures no CORS preflight is sent, avoiding silent block in some browsers
             fetch(API_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
             })
-                .then(() => {
-                    showGrowl(actionType === 'update' ? "Data cloud sinkron!" : "Transaksi cloud disimpan!");
+                .then(res => {
+                    showGrowl(actionType === 'update' ? "Data cloud diperbarui!" : "Transaksi cloud disimpan!");
                     resetForm();
                     setTimeout(loadData, 1200);
                 })
-                .catch(() => {
-                    showGrowl("Sinkronisasi gagal.", "error");
+                .catch(error => {
+                    console.error("Fetch API Error: ", error);
+                    showGrowl("Sinkronisasi gagal. Periksa jaringan Anda.", "error");
                     setLoader(false);
                 });
         });
 
-        // PREPARE FOR EDIT MODE
         function siapkanEdit(index) {
             const row = window.expenseList[index];
             if (!row) return;
@@ -720,12 +647,12 @@
             document.getElementById('notes').value = (row.notes === '-' || row.notes === 'undefined') ? '' : row.notes;
 
             document.getElementById('modalTitle').innerText = "Ubah Catatan Transaksi";
-            document.getElementById('submitBtn').innerText = "Update";
+            document.getElementById('submitBtn').innerText = "Update Data";
+            document.getElementById('submitBtn').className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition duration-200 text-base active:scale-[0.98]";
 
             document.getElementById('formModal').classList.remove('hidden');
         }
 
-        // RESET FORM FORM FIELD RECOVERY
         function resetForm() {
             document.getElementById('editRowIndex').value = '';
             document.getElementById('date').value = today;
@@ -733,36 +660,34 @@
             document.getElementById('notes').value = '';
             document.getElementById('modalTitle').innerText = "Catat Transaksi";
             document.getElementById('submitBtn').innerText = "Simpan Transaksi";
+            document.getElementById('submitBtn').className = "w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition duration-200 text-base active:scale-[0.98]";
         }
 
-        // DELETE TRANSACTION
         function hapusData(rowIndex) {
             if (confirm("Hapus baris transaksi ini permanen dari cloud?")) {
                 setLoader(true);
                 fetch(API_URL, {
                     method: 'POST',
                     mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action: 'delete', rowindex: rowIndex })
                 })
                     .then(() => {
                         showGrowl("Transaksi terhapus dari cloud.");
                         setTimeout(loadData, 1200);
                     })
-                    .catch(() => {
+                    .catch((e) => {
+                        console.error("Delete Error:", e);
                         showGrowl("Gagal menghapus.", "error");
                         setLoader(false);
                     });
             }
         }
 
-        // REKAP EXPORT ENGINE (TAB 4)
         function exportToCSV() {
             const data = window.expenseList || [];
-            if (data.length === 0) {
-                showGrowl("Tidak ada data untuk diekspor", "error");
-                return;
-            }
+            if (data.length === 0) return showGrowl("Tidak ada data untuk diekspor", "error");
+
             let csvContent = "data:text/csv;charset=utf-8,Tanggal,Kategori,Jumlah,Sumber,Catatan\n";
             data.forEach(row => {
                 let cleanAmt = String(row.amount).replace(/[^0-9]/g, '');
@@ -771,11 +696,11 @@
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Rekap_Spendy_Cahya_${new Date().getFullYear()}.csv`);
+            link.setAttribute("download", `Rekap_Spendy_${new Date().getFullYear()}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            showGrowl("File rekap CSV terunduh!");
+            showGrowl("File CSV terunduh!");
         }
 
         function formatDateForSheets(inputDate) {
@@ -784,9 +709,11 @@
             return `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
 
-        // INITIAL ENGINE RUN
-        document.getElementById('date').value = today;
-        window.onload = loadData;
+        // ==================== FIX: AUTO LOAD ON START ====================
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('date').value = today;
+            loadData();
+        });
     </script>
 </body>
 
