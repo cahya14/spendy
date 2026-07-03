@@ -1444,6 +1444,18 @@
         if (window.self !== window.top) {
             document.body.classList.add('embedded');
         }
+
+        // Parent communication: Listen to month changes from index2.html
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'SET_MONTH') {
+                const picker = document.getElementById('monthPicker');
+                if (picker) {
+                    picker.value = event.data.month;
+                    currentMonth = event.data.month;
+                    loadData();
+                }
+            }
+        });
     </script>
 
     <!-- Bottom Navigation Bar -->

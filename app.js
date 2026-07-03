@@ -228,6 +228,9 @@ function enableSimpleMouseDragScroll(containerId) {
 
 // ==================== NEW HELPERS FOR MONTH SELECTOR & DATA COMBINATION ====================
 function getCategoryIcon(category) {
+    const found = (window.spendyMetadata || []).find(m => m.nama.toLowerCase() === String(category).toLowerCase());
+    if (found && found.icon_emoji) return found.icon_emoji;
+
     const clean = String(category).toLowerCase();
     if (clean.includes('food') || clean.includes('makan') || clean.includes('minum')) return '🍔';
     if (clean.includes('transport') || clean.includes('perjalanan') || clean.includes('bensin')) return '🚗';
@@ -250,7 +253,22 @@ function getCategoryColor(category) {
     if (clean.includes('netflix') || clean.includes('hiburan') || clean.includes('game') || clean.includes('nonton') || clean.includes('movie')) return 'bg-emerald-100 text-emerald-600';
     if (clean.includes('belanja') || clean.includes('shop') || clean.includes('outfit')) return 'bg-purple-100 text-purple-600';
     if (clean.includes('listrik') || clean.includes('tagihan') || clean.includes('bill')) return 'bg-yellow-100 text-yellow-600';
-    return 'bg-slate-100 text-slate-600';
+    
+    // Hash based color fallback for custom metadata categories
+    const colors = [
+        "bg-emerald-100 text-emerald-600",
+        "bg-pink-100 text-pink-600",
+        "bg-amber-100 text-amber-600",
+        "bg-cyan-100 text-cyan-600",
+        "bg-indigo-100 text-indigo-600",
+        "bg-rose-100 text-rose-600",
+        "bg-teal-100 text-teal-600"
+    ];
+    let hash = 0;
+    for (let i = 0; i < clean.length; i++) {
+        hash += clean.charCodeAt(i);
+    }
+    return colors[hash % colors.length];
 }
 
 function getRowMonthYear(row) {
@@ -289,7 +307,7 @@ function formatGroupDate(dateStr) {
 }
 
 function populateMonthYearPickers() {
-    const headerSel = document.getElementById('headerMonthYear');
+    const appBarSel = document.getElementById('appBarMonthYear');
     
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -313,29 +331,31 @@ function populateMonthYearPickers() {
     }
     
     const selectContent = optionsHtml.join('');
-    if (headerSel) headerSel.innerHTML = selectContent;
+    if (appBarSel) appBarSel.innerHTML = selectContent;
     
     selectedMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
     
-    // Update the display year text
-    const displayYear = document.getElementById('displayYear');
-    if (displayYear) displayYear.innerText = currentYear;
-    
     populateMonthTabs();
+}
+
+function syncIframeMonth() {
+    const iframe = document.getElementById('budgetingIframe');
+    if (iframe && iframe.contentWindow && selectedMonth) {
+        iframe.contentWindow.postMessage({ type: 'SET_MONTH', month: selectedMonth }, '*');
+    }
 }
 
 function changeMonthYear(val) {
     selectedMonth = val;
     
-    const headerSel = document.getElementById('headerMonthYear');
-    if (headerSel) headerSel.value = val;
-    
-    const displayYear = document.getElementById('displayYear');
-    if (displayYear) displayYear.innerText = val.split('-')[0];
+    const appBarSel = document.getElementById('appBarMonthYear');
+    if (appBarSel) appBarSel.value = val;
     
     populateMonthTabs();
     
     loadData();
+    
+    syncIframeMonth();
 }
 
 function formatRupiah(value) {
@@ -344,105 +364,341 @@ function formatRupiah(value) {
 }
 
 // ==================== NEW HELPERS: CATEGORY LOCAL STORAGE CRUD ====================
-function getCategories() {
-    let stored = localStorage.getItem('spendy_categories');
-    if (!stored) {
-        stored = JSON.stringify(['Food', 'Transport', 'Other']);
-        localStorage.setItem('spendy_categories', stored);
-    }
-    return JSON.parse(stored);
-}
+// ==================== NEW HELPERS: METADATA & DROPDOWN CRUD (SUPABASE) ====================
+const DEFAULT_METADATA = [
+    { id: -1, nama: 'Food', jenis: 'Category', icon_emoji: '🍔' },
+    { id: -2, nama: 'Transport', jenis: 'Category', icon_emoji: '🚗' },
+    { id: -3, nama: 'Other', jenis: 'Category', icon_emoji: '📝' },
+    { id: -4, nama: 'Cash', jenis: 'Source', icon_emoji: '💵' },
+    { id: -5, nama: 'E-Wallet', jenis: 'Source', icon_emoji: '📱' },
+    { id: -6, nama: 'Bank Transfer', jenis: 'Source', icon_emoji: '💳' }
+];
+window.spendyMetadata = [];
+window.metaFilter = 'ALL';
 
-function renderCategoryList() {
-    const list = getCategories();
-    const container = document.getElementById('categoryListContainer');
-    if (container) {
-        container.innerHTML = '';
-        list.forEach((cat, index) => {
-            const div = document.createElement('div');
-            div.className = "flex justify-between items-center py-2.5";
-            div.innerHTML = `
-                <span class="text-xs font-semibold text-slate-700">${cat}</span>
-                <button onclick="deleteCategory(${index})" class="text-[10px] font-bold text-rose-500 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-md transition active:scale-95">Hapus</button>
-            `;
-            container.appendChild(div);
-        });
-    }
-    updateCategoryDropdowns();
-}
-
-function addCategory() {
-    const input = document.getElementById('newCategoryInput');
-    const val = input.value.trim();
-    if (!val) return showGrowl("Nama kategori tidak boleh kosong", "error");
-
-    let list = getCategories();
-    if (list.map(c => c.toLowerCase()).includes(val.toLowerCase())) {
-        return showGrowl("Kategori sudah ada", "error");
-    }
-    list.push(val);
-    localStorage.setItem('spendy_categories', JSON.stringify(list));
-    input.value = '';
-    renderCategoryList();
-    showGrowl("Kategori ditambahkan");
-}
-
-function deleteCategory(index) {
-    let list = getCategories();
-    const catToDelete = list[index];
-    if (confirm(`Hapus kategori "${catToDelete}"?`)) {
-        list.splice(index, 1);
-        localStorage.setItem('spendy_categories', JSON.stringify(list));
-        renderCategoryList();
-        showGrowl("Kategori dihapus");
+function loadCachedMetadata() {
+    try {
+        const cached = localStorage.getItem('spendy_metadata_cache');
+        if (cached) {
+            window.spendyMetadata = JSON.parse(cached);
+        } else {
+            window.spendyMetadata = DEFAULT_METADATA;
+            localStorage.setItem('spendy_metadata_cache', JSON.stringify(DEFAULT_METADATA));
+        }
+    } catch (e) {
+        window.spendyMetadata = DEFAULT_METADATA;
     }
 }
 
-function updateCategoryDropdowns() {
-    const list = getCategories();
+async function syncMetadataFromSupabase() {
+    try {
+        const { data, error } = await supabaseClient.from('spendy_metadata').select('*').order('nama');
+        if (!error && data) {
+            window.spendyMetadata = data;
+            localStorage.setItem('spendy_metadata_cache', JSON.stringify(data));
+            updateCategoryAndSourceDropdowns();
+            renderMetadataList();
+        }
+    } catch (e) {
+        console.warn("Failed to sync metadata from Supabase:", e);
+    }
+}
+
+function updateCategoryAndSourceDropdowns() {
+    const metadata = window.spendyMetadata || [];
+    const categories = metadata.filter(m => m.jenis === 'Category').map(m => m.nama);
+    const sources = metadata.filter(m => m.jenis === 'Source').map(m => m.nama);
 
     // 1. Update filterCategory select in tab-transactions
     const filterCat = document.getElementById('filterCategory');
     if (filterCat) {
         const prevVal = filterCat.value;
         filterCat.innerHTML = '<option value="ALL">Semua Kategori</option>';
-        list.forEach(cat => {
+        categories.forEach(cat => {
             filterCat.innerHTML += `<option value="${cat}">${cat}</option>`;
         });
-        filterCat.value = list.includes(prevVal) ? prevVal : 'ALL';
+        filterCat.value = categories.includes(prevVal) ? prevVal : 'ALL';
     }
 
-    // 2. Update category select in formModal
+    // 2. Update filterSource select in tab-transactions
+    const filterSrc = document.getElementById('filterSource');
+    if (filterSrc) {
+        const prevVal = filterSrc.value;
+        filterSrc.innerHTML = '<option value="ALL">Semua Sumber</option>';
+        sources.forEach(src => {
+            filterSrc.innerHTML += `<option value="${src}">${src}</option>`;
+        });
+        filterSrc.value = sources.includes(prevVal) ? prevVal : 'ALL';
+    }
+
+    // 3. Update category select in formModal
     const formCat = document.getElementById('category');
     if (formCat) {
         const prevVal = formCat.value;
         formCat.innerHTML = '';
-        list.forEach(cat => {
+        categories.forEach(cat => {
             formCat.innerHTML += `<option value="${cat}">${cat}</option>`;
         });
-        if (list.includes(prevVal)) {
+        if (categories.includes(prevVal)) {
             formCat.value = prevVal;
-        } else if (list.length > 0) {
-            formCat.value = list[0];
+        } else if (categories.length > 0) {
+            formCat.value = categories[0];
+        }
+    }
+
+    // 4. Update source select in formModal
+    const formSrc = document.getElementById('source');
+    if (formSrc) {
+        const prevVal = formSrc.value;
+        formSrc.innerHTML = '';
+        sources.forEach(src => {
+            formSrc.innerHTML += `<option value="${src}">${src}</option>`;
+        });
+        if (sources.includes(prevVal)) {
+            formSrc.value = prevVal;
+        } else if (sources.length > 0) {
+            formSrc.value = sources[0];
         }
     }
 }
 
-// ==================== NEW HELPERS: RADIO DANA ====================
-function selectSource(val) {
-    const sourceInput = document.getElementById('source');
-    if (sourceInput) sourceInput.value = val;
-    const sources = ['Cash', 'E-Wallet', 'Bank Transfer'];
-    sources.forEach(src => {
-        const btn = document.getElementById(`btn-source-${src}`);
+function renderMetadataList() {
+    const container = document.getElementById('metadataListContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const filter = window.metaFilter || 'ALL';
+    const items = window.spendyMetadata.filter(m => filter === 'ALL' || m.jenis === filter);
+    
+    if (items.length === 0) {
+        container.innerHTML = `<p class="text-center py-4 text-[11px] font-semibold text-slate-400">Tidak ada data.</p>`;
+        return;
+    }
+    
+    items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = "flex justify-between items-center py-2.5";
+        
+        div.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-base">${item.icon_emoji}</span>
+                <span class="text-xs font-semibold text-slate-700">${item.nama}</span>
+                <span class="text-[9px] px-1.5 py-0.5 rounded font-extrabold ${item.jenis === 'Category' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}">${item.jenis === 'Category' ? 'Kategori' : 'Sumber'}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="editMetadata(${item.id})" class="text-[10px] font-bold text-teal-600 bg-teal-50 hover:bg-teal-100 px-2 py-1 rounded-md transition active:scale-95">Edit</button>
+                <button onclick="deleteMetadata(${item.id})" class="text-[10px] font-bold text-rose-500 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded-md transition active:scale-95">Hapus</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function editMetadata(id) {
+    const item = window.spendyMetadata.find(m => Number(m.id) === Number(id));
+    if (!item) return;
+    
+    document.getElementById('metaEditId').value = item.id;
+    
+    // Check if name is used in window.expenseList
+    const isUsed = (window.expenseList || []).some(t => 
+        (t.category === item.nama && item.jenis === 'Category') || 
+        (t.source === item.nama && item.jenis === 'Source')
+    );
+    
+    const metaNama = document.getElementById('metaNama');
+    metaNama.value = item.nama;
+    
+    if (isUsed) {
+        metaNama.disabled = true;
+        metaNama.classList.remove('bg-slate-50');
+        metaNama.classList.add('bg-slate-200', 'text-slate-400');
+    } else {
+        metaNama.disabled = false;
+        metaNama.classList.remove('bg-slate-200', 'text-slate-400');
+        metaNama.classList.add('bg-slate-50');
+    }
+    
+    const metaJenis = document.getElementById('metaJenis');
+    metaJenis.value = item.jenis;
+    metaJenis.disabled = true;
+    
+    document.getElementById('metaIcon').value = item.icon_emoji;
+    
+    document.getElementById('metaSubmitBtn').innerText = "Simpan";
+    document.getElementById('metaCancelBtn').classList.remove('hidden');
+}
+
+function cancelEditMetadata() {
+    document.getElementById('metaEditId').value = '';
+    
+    const metaNama = document.getElementById('metaNama');
+    metaNama.value = '';
+    metaNama.disabled = false;
+    metaNama.classList.remove('bg-slate-200', 'text-slate-400');
+    metaNama.classList.add('bg-slate-50');
+    
+    const metaJenis = document.getElementById('metaJenis');
+    metaJenis.disabled = false;
+    
+    document.getElementById('metaIcon').value = '';
+    
+    document.getElementById('metaSubmitBtn').innerText = "Tambah";
+    document.getElementById('metaCancelBtn').classList.add('hidden');
+}
+
+async function saveMetadata(event) {
+    event.preventDefault();
+    const id = document.getElementById('metaEditId').value;
+    const nama = document.getElementById('metaNama').value.trim();
+    const jenis = document.getElementById('metaJenis').value;
+    const emoji = document.getElementById('metaIcon').value.trim();
+    
+    if (!nama || !emoji) {
+        return showGrowl("Nama dan Emoji tidak boleh kosong!", "error");
+    }
+    
+    if (id) {
+        const metaNama = document.getElementById('metaNama');
+        const updatePayload = { icon_emoji: emoji };
+        
+        // If name input is enabled, we allow editing the name too
+        if (!metaNama.disabled) {
+            // Check unique name for other items
+            const conflict = window.spendyMetadata.some(m => 
+                Number(m.id) !== Number(id) && 
+                m.nama.toLowerCase() === nama.toLowerCase() && 
+                m.jenis === jenis
+            );
+            if (conflict) {
+                return showGrowl(`Nama ${jenis === 'Category' ? 'Kategori' : 'Sumber'} sudah digunakan!`, "error");
+            }
+            updatePayload.nama = nama;
+        }
+
+        try {
+            const { error } = await supabaseClient
+                .from('spendy_metadata')
+                .update(updatePayload)
+                .eq('id', id);
+                
+            if (error) throw error;
+            
+            showGrowl("Berhasil memperbarui data!");
+            cancelEditMetadata();
+            await syncMetadataFromSupabase();
+        } catch (e) {
+            console.error(e);
+            showGrowl("Gagal memperbarui data.", "error");
+        }
+    } else {
+        // INSERT
+        // Check unique name in memory first
+        const exists = window.spendyMetadata.some(m => m.nama.toLowerCase() === nama.toLowerCase() && m.jenis === jenis);
+        if (exists) {
+            return showGrowl(`Nama ${jenis === 'Category' ? 'Kategori' : 'Sumber'} sudah digunakan!`, "error");
+        }
+        
+        try {
+            const { error } = await supabaseClient
+                .from('spendy_metadata')
+                .insert([{ nama, jenis, icon_emoji: emoji }]);
+                
+            if (error) {
+                if (error.code === '23505') {
+                    return showGrowl("Nama tersebut sudah terdaftar!", "error");
+                }
+                throw error;
+            }
+            
+            showGrowl("Berhasil menambahkan data!");
+            document.getElementById('metaNama').value = '';
+            document.getElementById('metaIcon').value = '';
+            await syncMetadataFromSupabase();
+        } catch (e) {
+            console.error(e);
+            showGrowl("Gagal menyimpan data.", "error");
+        }
+    }
+}
+
+let _pendingDeleteMetaId = null;
+
+function tutupMetaDeleteModal() {
+    _pendingDeleteMetaId = null;
+    const modal = document.getElementById('metaDeleteConfirmModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function deleteMetadata(id) {
+    // Check seed fallback first
+    if (Number(id) < 0) {
+        // Since it's negative, it's a local default seed item. It cannot be deleted from Supabase.
+        // We can just warn the user.
+        return showGrowl("Data default bawaan tidak dapat dihapus sebelum disimpan di database.", "error");
+    }
+
+    const item = window.spendyMetadata.find(m => Number(m.id) === Number(id));
+    if (!item) return;
+    
+    // Check if name is used in window.expenseList
+    const isUsed = (window.expenseList || []).some(t => 
+        (t.category === item.nama && item.jenis === 'Category') || 
+        (t.source === item.nama && item.jenis === 'Source')
+    );
+    
+    if (isUsed) {
+        return showGrowl(`"${item.nama}" sudah digunakan dalam transaksi dan tidak dapat dihapus!`, "error");
+    }
+    
+    _pendingDeleteMetaId = id;
+    const confirmTextEl = document.getElementById('metaDeleteConfirmText');
+    if (confirmTextEl) {
+        confirmTextEl.innerText = `Apakah Anda yakin ingin menghapus ${item.jenis === 'Category' ? 'kategori' : 'sumber dana'} "${item.nama}"?`;
+    }
+    const modal = document.getElementById('metaDeleteConfirmModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+async function konfirmasiHapusMeta() {
+    const id = _pendingDeleteMetaId;
+    tutupMetaDeleteModal();
+    if (id == null) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('spendy_metadata')
+            .delete()
+            .eq('id', id);
+            
+        if (error) throw error;
+        
+        showGrowl("Berhasil menghapus data!");
+        await syncMetadataFromSupabase();
+    } catch (e) {
+        console.error(e);
+        showGrowl("Gagal menghapus data.", "error");
+    }
+}
+
+function filterMetadataList(jenis) {
+    window.metaFilter = jenis;
+    const filters = ['ALL', 'Category', 'Source'];
+    filters.forEach(f => {
+        const btn = document.getElementById(`btn-meta-filter-${f}`);
         if (btn) {
-            if (src === val) {
-                btn.className = "py-3 px-2 rounded-xl border-2 font-bold transition text-xs text-center select-none bg-teal-50 border-teal-500 text-teal-700";
+            if (f === jenis) {
+                btn.className = "px-2.5 py-1 rounded bg-teal-600 text-white transition";
             } else {
-                btn.className = "py-3 px-2 rounded-xl border bg-slate-50 font-semibold transition text-xs text-center select-none text-slate-700 hover:bg-slate-100";
+                btn.className = "px-2.5 py-1 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 transition";
             }
         }
     });
+    renderMetadataList();
+}
+
+function resetMetadataFormText() {
+    // Stub
 }
 
 // ==================== NEW HELPERS: NOMINAL FORMAT & SHORTCUT ====================
@@ -490,18 +746,16 @@ function setLoader(show) {
 }
 
 function showSyncIndicator() {
-    const el = document.getElementById('syncIndicator');
+    const el = document.getElementById('appBarSyncIndicator');
     if (el) el.classList.remove('hidden');
 }
 
 function hideSyncIndicator() {
-    const el = document.getElementById('syncIndicator');
+    const el = document.getElementById('appBarSyncIndicator');
     if (el) el.classList.add('hidden');
-    // Stop spinning animation on sync buttons
-    ['syncBtnIcon', 'reportSyncIcon'].forEach(id => {
-        const icon = document.getElementById(id);
-        if (icon) icon.classList.remove('animate-spin');
-    });
+    // Stop spinning animation on sync button
+    const icon = document.getElementById('appBarSyncIcon');
+    if (icon) icon.classList.remove('animate-spin');
 }
 
 /**
@@ -511,25 +765,35 @@ function hideSyncIndicator() {
  */
 async function manualSync() {
     // Spin the sync button icon to indicate loading
-    ['syncBtnIcon', 'reportSyncIcon'].forEach(id => {
-        const icon = document.getElementById(id);
-        if (icon) icon.classList.add('animate-spin');
-    });
+    const icon = document.getElementById('appBarSyncIcon');
+    if (icon) icon.classList.add('animate-spin');
     showSyncIndicator();
     
+    // Trigger sync in budgeting page if embedded
+    const iframe = document.getElementById('budgetingIframe');
+    if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'REFRESH' }, '*');
+    }
+    
     try {
-        const [sheetsRes, supabaseRes] = await Promise.all([
+        const [sheetsRes, supabaseRes, supabaseMetaRes] = await Promise.all([
             fetch(API_URL),
-            supabaseClient.from('incomes').select('*').eq('month', selectedMonth)
+            supabaseClient.from('incomes').select('*').eq('month', selectedMonth),
+            supabaseClient.from('spendy_metadata').select('*').order('nama')
         ]);
 
         const freshData = await sheetsRes.json();
         if (supabaseRes.error) throw supabaseRes.error;
+        if (supabaseMetaRes.error) throw supabaseMetaRes.error;
 
         window.expenseList = freshData;
         window.incomeList  = supabaseRes.data || [];
+        window.spendyMetadata = supabaseMetaRes.data || [];
         saveExpenseCache(freshData);
+        localStorage.setItem('spendy_metadata_cache', JSON.stringify(supabaseMetaRes.data || []));
 
+        updateCategoryAndSourceDropdowns();
+        renderMetadataList();
         renderAllUI();
         showGrowl('Data berhasil disinkronkan!');
     } catch (err) {
@@ -582,7 +846,37 @@ function switchTab(tabId) {
         }
     });
 
-    if (tabId === 'reports') {
+    // Update App Bar
+    const titleEl = document.getElementById('appBarTitle');
+    const iconEl = document.getElementById('appBarIcon');
+    if (titleEl) {
+        if (tabId === 'budgeting') {
+            titleEl.innerText = "Budgeting";
+            if (iconEl) iconEl.innerText = "📊";
+        } else if (tabId === 'transactions') {
+            titleEl.innerText = "Transaksi";
+            if (iconEl) iconEl.innerText = "💰";
+        } else if (tabId === 'reports') {
+            titleEl.innerText = "Laporan";
+            if (iconEl) iconEl.innerText = "📈";
+        } else if (tabId === 'settings') {
+            titleEl.innerText = "Pengaturan";
+            if (iconEl) iconEl.innerText = "⚙️";
+        }
+    }
+    
+    const monthSelector = document.getElementById('appBarMonthSelectorContainer');
+    const syncBtn = document.getElementById('appBarSyncBtn');
+    if (monthSelector) {
+        monthSelector.classList.toggle('hidden', tabId === 'settings');
+    }
+    if (syncBtn) {
+        syncBtn.classList.toggle('hidden', tabId === 'settings');
+    }
+
+    if (tabId === 'budgeting') {
+        syncIframeMonth();
+    } else if (tabId === 'reports') {
         setTimeout(() => {
             renderCharts();
             
@@ -599,6 +893,8 @@ function switchTab(tabId) {
             }
             updateCarouselDots(0);
         }, 50);
+    } else if (tabId === 'settings') {
+        renderMetadataList();
     }
 }
 
@@ -667,11 +963,14 @@ async function loadData(silent = false) {
     try {
         // Fetch spreadsheet and Supabase in parallel.
         // Supabase failure is non-fatal — we handle it separately.
-        const [sheetsRes, supabaseResult] = await Promise.all([
+        const [sheetsRes, supabaseResult, supabaseMetaResult] = await Promise.all([
             fetch(API_URL),
             supabaseClient.from('incomes').select('*').eq('month', selectedMonth)
                 .then(r => r)
-                .catch(e => ({ data: [], error: e }))  // absorb Supabase network errors
+                .catch(e => ({ data: [], error: e })),  // absorb Supabase network errors
+            supabaseClient.from('spendy_metadata').select('*').order('nama')
+                .then(r => r)
+                .catch(e => ({ data: [], error: e }))   // absorb Supabase network errors
         ]);
 
         const freshData = await sheetsRes.json();
@@ -682,6 +981,16 @@ async function loadData(silent = false) {
             window.incomeList = window.incomeList || [];
         } else {
             window.incomeList = supabaseResult.data || [];
+        }
+
+        // Supabase Metadata
+        if (supabaseMetaResult.error) {
+            console.warn('Supabase metadata fetch failed (non-fatal):', supabaseMetaResult.error);
+        } else if (supabaseMetaResult.data) {
+            window.spendyMetadata = supabaseMetaResult.data;
+            localStorage.setItem('spendy_metadata_cache', JSON.stringify(supabaseMetaResult.data));
+            updateCategoryAndSourceDropdowns();
+            renderMetadataList();
         }
 
         // Only re-render if data actually changed (avoid flicker)
@@ -774,15 +1083,16 @@ function filterAndRenderTransactions() {
     }
 
     // Sort descending by date, then by rowindex descending (latest entry at top for same date)
+    // Negative rowindex = optimistic/temp row → always goes first within its date group
     combinedList.sort((a, b) => {
         const dateA = parseDateObj(a.date);
         const dateB = parseDateObj(b.date);
         if (dateA.getTime() !== dateB.getTime()) {
             return dateB.getTime() - dateA.getTime();
         }
-        // Same date: higher rowindex (newer spreadsheet row) comes first
-        const riA = a.rowindex || 0;
-        const riB = b.rowindex || 0;
+        // Optimistic rows (negative rowindex) sort as highest priority
+        const riA = (a.rowindex < 0) ? Number.MAX_SAFE_INTEGER : (a.rowindex || 0);
+        const riB = (b.rowindex < 0) ? Number.MAX_SAFE_INTEGER : (b.rowindex || 0);
         if (riA !== riB) {
             return riB - riA;
         }
@@ -821,7 +1131,7 @@ function filterAndRenderTransactions() {
     sortedDates.forEach(dateStr => {
         const group = groups[dateStr];
         const groupDiv = document.createElement('div');
-        groupDiv.className = "space-y-2";
+        groupDiv.className = "bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm mb-4";
 
         const formattedDate = formatGroupDate(group.date);
 
@@ -841,39 +1151,48 @@ function filterAndRenderTransactions() {
             const amountStr = new Intl.NumberFormat('id-ID').format(item.amount);
 
             itemsHtml += `
-            <div class="bg-white border border-slate-200/60 rounded-[1.25rem] p-3.5 shadow-sm flex justify-between items-center transition active:bg-slate-50 active:scale-[0.98]">
-                <div class="flex items-center gap-3 min-w-0 flex-1">
-                    <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-lg ${colorClass}">
-                        ${icon}
-                    </div>
-                    <div class="min-w-0">
+            <div class="flex justify-between items-center py-3 border-b border-slate-100 last:border-b-0 transition active:bg-slate-50/50">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base shrink-0">${icon}</span>
                         <h4 class="font-bold text-slate-800 text-sm truncate">${item.notes && item.notes !== '-' ? item.notes : item.category}</h4>
-                        <p class="text-[10px] text-slate-400 font-bold flex items-center gap-1.5">
-                            <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> ${item.source}
-                        </p>
+                    </div>
+                    <div class="mt-1 pl-6 flex flex-col gap-0.5">
+                        <span class="font-extrabold text-sm ${item.type === 'expense' ? 'text-rose-600' : 'text-teal-600'}">
+                            ${item.type === 'expense' ? '-' : ''}Rp ${amountStr}
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-bold">
+                            ${item.category} • ${item.source}
+                        </span>
                     </div>
                 </div>
-                <div class="text-right shrink-0 ml-2 flex flex-col items-end gap-1">
-                    <span class="font-black text-sm ${item.type === 'expense' ? 'text-slate-800' : 'text-teal-600'}">
-                        ${item.type === 'expense' ? '-' : ''}${amountStr}
-                    </span>
-                    ${item.type === 'expense' ? `
-                    <div class="flex items-center gap-2 text-[10px] font-bold">
-                        <button onclick="siapkanEdit(${item.originalIndex})" class="text-teal-600 hover:text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md transition active:scale-95">Edit</button>
-                        <button onclick="hapusData(${item.rowindex})" class="text-rose-500 hover:text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md transition active:scale-95">Hapus</button>
-                    </div>
-                    ` : ''}
+                <div class="shrink-0 ml-2">
+                    ${item.type === 'expense' ? (
+                        item.rowindex < 0
+                        // ── Optimistic / pending row: buttons disabled ──────────────────
+                        ? `<div class="flex items-center gap-1.5 text-[10px] font-bold">
+                               <span class="flex items-center gap-1 text-amber-500 bg-amber-50 px-2 py-0.5 rounded-md">
+                                   <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                   Menyimpan...
+                               </span>
+                           </div>`
+                        // ── Real row: circular edit / hapus buttons matching image ──────
+                        : `<div class="flex items-center gap-2">
+                               <button onclick="siapkanEdit(${item.originalIndex})" class="w-8 h-8 rounded-full bg-teal-50/80 text-teal-600 border border-teal-100 flex items-center justify-center transition active:scale-90 hover:bg-teal-100" title="Edit">✏️</button>
+                               <button onclick="hapusData(${item.rowindex})" class="w-8 h-8 rounded-full bg-rose-50/80 text-rose-500 border border-rose-100 flex items-center justify-center transition active:scale-90 hover:bg-rose-100" title="Hapus">🗑️</button>
+                           </div>`
+                    ) : ''}
                 </div>
             </div>
             `;
         });
 
         groupDiv.innerHTML = `
-            <div class="flex justify-between items-center px-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <div class="bg-slate-50 border-b border-slate-200/60 px-4 py-2.5 flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <span>${formattedDate}</span>
                 <span class="normal-case font-bold text-slate-400/90">${rightSideText}</span>
             </div>
-            <div class="space-y-2">
+            <div class="px-4">
                 ${itemsHtml}
             </div>
         `;
@@ -943,7 +1262,9 @@ function createMobileCard(row, index) {
 
 function renderCharts() {
     const data = window.expenseList || [];
-    const categories = getCategories();
+    const categories = (window.spendyMetadata || []).length > 0
+        ? (window.spendyMetadata || []).filter(m => m.jenis === 'Category').map(m => m.nama)
+        : ['Food', 'Transport', 'Other'];
     
     // 1. Target dates details
     const parts = selectedMonth.split('-');
@@ -965,7 +1286,11 @@ function renderCharts() {
         dateLabels.push(label);
     }
     
-    let srcMap = { 'Cash': 0, 'E-Wallet': 0, 'Bank Transfer': 0 };
+    const sources = (window.spendyMetadata || []).length > 0
+        ? (window.spendyMetadata || []).filter(m => m.jenis === 'Source').map(m => m.nama)
+        : ['Cash', 'E-Wallet', 'Bank Transfer'];
+    let srcMap = {};
+    sources.forEach(src => { srcMap[src] = 0; });
     let expenseItems = [];
     let totalExpenses = 0;
 
@@ -998,7 +1323,12 @@ function renderCharts() {
         if (srcMap[row.source] !== undefined) {
             srcMap[row.source] += num;
         } else {
-            srcMap['Cash'] += num;
+            const fallbackSrc = sources.includes('Cash') ? 'Cash' : (sources[0] || 'Cash');
+            if (srcMap[fallbackSrc] !== undefined) {
+                srcMap[fallbackSrc] += num;
+            } else {
+                srcMap[row.source] = num;
+            }
         }
 
         expenseItems.push({ notes: row.notes, category: row.category, amount: num, date: row.date });
@@ -1295,28 +1625,65 @@ function renderCharts() {
     });
 }
 
-// ==================== FIX: SUBMIT FORM HANDLER ====================
+// ==================== SUBMIT FORM HANDLER — OPTIMISTIC UI ====================
 document.getElementById('expenseForm').addEventListener('submit', function (e) {
     e.preventDefault();
     tutupModal();
 
     const editRowIndex = document.getElementById('editRowIndex').value;
     const actionType = editRowIndex ? 'update' : 'create';
-
-    // Clean dots from amount string before parsing
     const rawAmount = document.getElementById('amount').value.replace(/[^0-9]/g, '');
+    const dateValue = document.getElementById('date').value;           // YYYY-MM-DD
+    const dateForSheets = formatDateForSheets(dateValue);              // DD/MM/YYYY
+    const categoryValue = document.getElementById('category').value;
+    const sourceValue = document.getElementById('source').value;
+    const notesValue = document.getElementById('notes').value || '-';
+    const amountValue = parseInt(rawAmount) || 0;
 
+    // ── OPTIMISTIC UPDATE: mutate local list immediately ─────────────────
+    if (actionType === 'create') {
+        // Build a temporary row (temp rowindex < 0 so it can't collide with real ones)
+        const tempRow = {
+            date: dateForSheets,
+            category: categoryValue,
+            amount: amountValue,
+            source: sourceValue,
+            notes: notesValue,
+            rowindex: -Date.now()   // unique negative temp ID
+        };
+        window.expenseList = [tempRow, ...(window.expenseList || [])];
+    } else {
+        // Patch existing row in-place
+        const targetIdx = (window.expenseList || []).findIndex(
+            r => String(r.rowindex) === String(editRowIndex)
+        );
+        if (targetIdx !== -1) {
+            window.expenseList[targetIdx] = {
+                ...window.expenseList[targetIdx],
+                date: dateForSheets,
+                category: categoryValue,
+                amount: amountValue,
+                source: sourceValue,
+                notes: notesValue
+            };
+        }
+    }
+    saveExpenseCache(window.expenseList);
+    renderAllUI();
+    resetForm();
+    showGrowl(actionType === 'update' ? 'Transaksi diperbarui!' : 'Transaksi disimpan!');
+
+    // ── BACKGROUND SYNC to Google Sheets ─────────────────────────────────
     const payload = {
         action: actionType,
         rowindex: editRowIndex ? parseInt(editRowIndex) : null,
-        date: formatDateForSheets(document.getElementById('date').value),
-        category: document.getElementById('category').value,
-        amount: parseInt(rawAmount) || 0,
-        source: document.getElementById('source').value,
-        notes: document.getElementById('notes').value
+        date: dateForSheets,
+        category: categoryValue,
+        amount: amountValue,
+        source: sourceValue,
+        notes: notesValue
     };
 
-    // FIX: Using text/plain ensures no CORS preflight is sent, avoiding silent block in some browsers
     showSyncIndicator();
     fetch(API_URL, {
         method: 'POST',
@@ -1324,15 +1691,13 @@ document.getElementById('expenseForm').addEventListener('submit', function (e) {
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
     })
-        .then(res => {
-            showGrowl(actionType === 'update' ? "Data cloud diperbarui!" : "Transaksi cloud disimpan!");
-            resetForm();
-            // silent=true: background sync after CRUD — don't show error toast if sheets is slow
-            setTimeout(() => loadData(true), 1200);
+        .then(() => {
+            // Re-fetch after 1.5s to get real rowindex from sheets
+            setTimeout(() => loadData(true), 1500);
         })
         .catch(error => {
-            console.error("Fetch API Error: ", error);
-            showGrowl("Sinkronisasi gagal. Periksa jaringan Anda.", "error");
+            console.error('Fetch API Error:', error);
+            showGrowl('Sinkronisasi cloud gagal. Data tersimpan lokal.', 'error');
             hideSyncIndicator();
         });
 });
@@ -1353,7 +1718,10 @@ function siapkanEdit(index) {
     amountInput.value = cleanAmount;
     formatAmountInput(amountInput);
 
-    selectSource(row.source || 'Cash');
+    const sourceSelect = document.getElementById('source');
+    if (sourceSelect) {
+        sourceSelect.value = row.source || 'Cash';
+    }
     document.getElementById('notes').value = (row.notes === '-' || row.notes === 'undefined') ? '' : row.notes;
 
     document.getElementById('modalTitle').innerText = "Ubah Catatan Transaksi";
@@ -1368,32 +1736,62 @@ function resetForm() {
     document.getElementById('date').value = today;
     document.getElementById('amount').value = '';
     document.getElementById('notes').value = '';
-    selectSource('Cash');
+    
+    const sourceSelect = document.getElementById('source');
+    if (sourceSelect) {
+        if ([...sourceSelect.options].some(opt => opt.value === 'Cash')) {
+            sourceSelect.value = 'Cash';
+        } else if (sourceSelect.options.length > 0) {
+            sourceSelect.selectedIndex = 0;
+        }
+    }
     document.getElementById('modalTitle').innerText = "Catat Transaksi";
     document.getElementById('submitBtn').innerText = "Simpan Transaksi";
     document.getElementById('submitBtn').className = "w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition duration-200 text-base active:scale-[0.98]";
 }
 
+// ── Delete modal state ────────────────────────────────────────────────────────
+let _pendingDeleteRowIndex = null;
+
 function hapusData(rowIndex) {
-    if (confirm("Hapus baris transaksi ini permanen dari cloud?")) {
-        showSyncIndicator();
-        fetch(API_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'delete', rowindex: rowIndex })
+    _pendingDeleteRowIndex = rowIndex;
+    document.getElementById('deleteConfirmModal').classList.remove('hidden');
+}
+
+function tutupDeleteModal() {
+    _pendingDeleteRowIndex = null;
+    document.getElementById('deleteConfirmModal').classList.add('hidden');
+}
+
+function konfirmasiHapus() {
+    const rowIndex = _pendingDeleteRowIndex;
+    tutupDeleteModal();
+    if (rowIndex == null) return;
+
+    // ── OPTIMISTIC: remove from local list immediately ────────────────────
+    window.expenseList = (window.expenseList || []).filter(
+        r => String(r.rowindex) !== String(rowIndex)
+    );
+    saveExpenseCache(window.expenseList);
+    renderAllUI();
+    showGrowl('Transaksi dihapus.');
+
+    // ── BACKGROUND SYNC: delete from sheets ──────────────────────────────
+    showSyncIndicator();
+    fetch(API_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'delete', rowindex: rowIndex })
+    })
+        .then(() => {
+            setTimeout(() => loadData(true), 1500);
         })
-            .then(() => {
-                showGrowl("Transaksi terhapus dari cloud.");
-                // silent=true: background sync after delete — don't show error toast
-                setTimeout(() => loadData(true), 1200);
-            })
-            .catch((e) => {
-                console.error("Delete Error:", e);
-                showGrowl("Gagal menghapus.", "error");
-                hideSyncIndicator();
-            });
-    }
+        .catch((e) => {
+            console.error('Delete Error:', e);
+            showGrowl('Hapus cloud gagal. Coba sync ulang.', 'error');
+            hideSyncIndicator();
+        });
 }
 
 function exportToCSV() {
@@ -1425,8 +1823,8 @@ function formatDateForSheets(inputDate) {
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('date').value = today;
     populateMonthYearPickers();
-    renderCategoryList();
-    selectSource('Cash');
+    loadCachedMetadata();
+    updateCategoryAndSourceDropdowns();
     loadData();
 
     // Setup carousel scroll snap swipe listener
