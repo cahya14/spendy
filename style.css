@@ -2,6 +2,9 @@
 
 body {
     font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
 }
 
 @keyframes slideUp {
@@ -27,6 +30,20 @@ body {
 .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+#chartCarouselContainer,
+#reportMonthTabs {
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+#chartCarouselContainer:active,
+#reportMonthTabs:active {
+    cursor: grabbing;
 }
 
 /* Prevent bounce scroll on iOS and force dynamic viewport height */

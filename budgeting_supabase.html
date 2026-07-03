@@ -9,7 +9,7 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
         :root {
             --wa-dark: #0f766e;
@@ -36,30 +36,33 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Outfit', 'Segoe UI', sans-serif;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
         }
 
         body {
             background-color: var(--wa-bg);
             color: var(--wa-text-main);
             padding-bottom: 90px;
+            font-size: 13.5px;
+            line-height: 1.45;
+            -webkit-font-smoothing: antialiased;
         }
 
         .app-bar {
             background: linear-gradient(135deg, #0f766e, #134e4a);
             color: white;
-            padding: 16px;
+            padding: 12px;
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 4px 15px rgba(15, 118, 110, 0.25);
+            box-shadow: 0 4px 15px rgba(15, 118, 110, 0.15);
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .app-bar h1 {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             font-weight: 700;
             letter-spacing: 0.5px;
         }
@@ -67,7 +70,7 @@
         .container {
             max-width: 500px;
             margin: 0 auto;
-            padding: 16px;
+            padding: 12px;
         }
 
         @keyframes fadeInUp {
@@ -85,23 +88,23 @@
         .card {
             background: var(--wa-bubble-in);
             border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 12px rgba(190, 90, 117, 0.04);
+            padding: 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(15, 118, 110, 0.03);
             animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
         h3 {
             color: var(--wa-text-main);
-            font-size: 1.05rem;
-            margin-bottom: 12px;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
             font-weight: 700;
         }
 
         .label {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: var(--wa-text-muted);
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             display: block;
             font-weight: 600;
         }
@@ -109,13 +112,13 @@
         input,
         select {
             width: 100%;
-            padding: 12px;
+            padding: 10px 12px;
             border: 1.5px solid var(--border);
-            border-radius: 12px;
-            font-size: 1rem;
-            margin-bottom: 12px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
             outline: none;
-            background-color: #fff8f9;
+            background-color: #f8fafc;
             color: var(--wa-text-main);
             transition: 0.2s;
         }
@@ -124,15 +127,16 @@
         select:focus {
             border-color: var(--wa-primary);
             background-color: white;
-            box-shadow: 0 0 0 3px rgba(227, 133, 157, 0.15);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
         }
 
         .btn {
             width: 100%;
-            padding: 12px;
-            border-radius: 24px;
+            padding: 10px 14px;
+            border-radius: 20px;
             border: none;
             font-weight: bold;
+            font-size: 0.85rem;
             cursor: pointer;
             color: white;
             background: var(--wa-primary);
@@ -237,17 +241,17 @@
         .grand-total-box {
             background: linear-gradient(135deg, #0d9488, #0f766e);
             color: white;
-            padding: 20px;
-            border-radius: 18px;
-            margin-bottom: 16px;
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
             text-align: center;
-            box-shadow: 0 6px 20px rgba(15, 118, 110, 0.20);
+            box-shadow: 0 4px 15px rgba(15, 118, 110, 0.12);
         }
 
         .grand-total-box h2 {
             color: white;
-            margin-top: 5px;
-            font-size: 2rem;
+            margin-top: 4px;
+            font-size: 1.6rem;
             font-weight: 800;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
@@ -256,9 +260,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #fff1f2;
-            font-size: 0.95rem;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.85rem;
         }
 
         .summary-row:last-child {
@@ -273,13 +277,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #fff1f2;
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.85rem;
             transition: background-color 0.2s;
         }
 
         .item-row:hover {
-            background-color: #fff8f9;
+            background-color: #f8fafc;
         }
 
         .item-row:last-child {
@@ -298,18 +303,18 @@
 
         .expense-group {
             border: 1.5px solid var(--border);
-            border-radius: 16px;
-            margin-bottom: 14px;
+            border-radius: 14px;
+            margin-bottom: 12px;
             overflow: hidden;
             background: white;
-            box-shadow: 0 2px 8px rgba(190, 90, 117, 0.02);
+            box-shadow: 0 2px 8px rgba(15, 118, 110, 0.01);
         }
 
         .expense-group-header {
-            background-color: #fff1f2;
-            padding: 10px 14px;
+            background-color: #f1f5f9;
+            padding: 8px 12px;
             font-weight: 700;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: var(--wa-text-muted);
             display: flex;
             justify-content: space-between;
@@ -317,7 +322,7 @@
         }
 
         .expense-group-body {
-            padding: 0 14px;
+            padding: 0 12px;
         }
 
         .text-wa-green {

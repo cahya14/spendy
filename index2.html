@@ -7,6 +7,19 @@
     <title>Spendy Premium</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Supabase JS SDK -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Kustom Style Spendy Premium -->
@@ -33,62 +46,169 @@
 
         <!-- ==================== TAB 2: TRANSAKSI ==================== -->
         <section id="tab-transactions" class="flex-1 flex flex-col overflow-hidden">
-            <div class="p-6 pb-4 bg-white border-b border-slate-100 shrink-0 z-10 shadow-sm">
-                <h2 class="text-xl font-bold text-slate-800 tracking-tight mb-4">Riwayat Transaksi</h2>
-                <div class="flex gap-2">
-                    <div class="relative flex-1">
-                        <select id="filterCategory" onchange="filterAndRenderTransactions()"
-                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-600 text-slate-700 appearance-none">
-                            <option value="ALL">Semua Kategori</option>
-                            <option value="Food">Food</option>
-                            <option value="Transport">Transport</option>
-                            <option value="Other">Other</option>
-                        </select>
+            <!-- Top Banner Card -->
+            <div class="bg-gradient-to-br from-teal-800 to-teal-900 text-white px-6 pt-5 pb-6 rounded-b-[2.5rem] shadow-xl relative shrink-0">
+                <div class="flex justify-between items-center mb-5">
+                    <!-- Month Year Picker -->
+                    <div class="flex items-center gap-1.5 cursor-pointer">
+                        <div class="text-left">
+                            <span id="displayYear" class="text-[10px] text-teal-200 uppercase tracking-wider font-extrabold">2026</span>
+                            <div class="flex items-center gap-1">
+                                <select id="headerMonthYear" onchange="changeMonthYear(this.value)"
+                                    class="bg-transparent border-none text-xl font-black text-white focus:outline-none cursor-pointer pr-4 appearance-none py-0">
+                                    <!-- Loaded dynamically -->
+                                </select>
+                                <svg class="w-4 h-4 text-teal-200 pointer-events-none -ml-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+                                </svg>
+                            </div>
+                        </div>
                     </div>
-                    <div class="relative flex-1">
-                        <select id="filterSource" onchange="filterAndRenderTransactions()"
-                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-600 text-slate-700 appearance-none">
-                            <option value="ALL">Semua Sumber</option>
-                            <option value="Cash">Cash</option>
-                            <option value="E-Wallet">E-Wallet</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                        </select>
+                    <!-- Title + Sync Indicator -->
+                    <div class="flex flex-col items-end gap-1">
+                        <h1 class="text-sm font-black tracking-widest uppercase text-teal-100/90">Money Tracker</h1>
+                        <div id="syncIndicator" class="hidden flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2.5 py-0.5 rounded-full">
+                            <div class="w-1.5 h-1.5 rounded-full bg-teal-200 animate-pulse"></div>
+                            <span class="text-[9px] font-bold text-teal-100 tracking-wide whitespace-nowrap">Sinkronisasi...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Columns: Expenses, Income, Balance -->
+                <div class="grid grid-cols-3 gap-2 text-center bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+                    <div>
+                        <p class="text-[9px] uppercase font-bold text-teal-200/95 tracking-wider">Expenses</p>
+                        <p id="totalExpenses" class="text-[13px] font-black text-white mt-1">Rp 0</p>
+                    </div>
+                    <div class="border-l border-white/10">
+                        <p class="text-[9px] uppercase font-bold text-teal-200/95 tracking-wider">Income</p>
+                        <p id="totalIncome" class="text-[13px] font-black text-white mt-1">Rp 0</p>
+                    </div>
+                    <div class="border-l border-white/10">
+                        <p class="text-[9px] uppercase font-bold text-teal-200/95 tracking-wider">Balance</p>
+                        <p id="totalBalance" class="text-[13px] font-black text-white mt-1">Rp 0</p>
                     </div>
                 </div>
             </div>
 
+            <!-- Filters Area -->
+            <div class="px-6 pt-4 pb-2 bg-slate-50 border-b border-slate-100/50 shrink-0 flex gap-2">
+                <div class="relative flex-1">
+                    <select id="filterCategory" onchange="filterAndRenderTransactions()"
+                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-600 text-slate-700 appearance-none">
+                        <option value="ALL">Semua Kategori</option>
+                        <!-- Loaded dynamically -->
+                    </select>
+                </div>
+                <div class="relative flex-1">
+                    <select id="filterSource" onchange="filterAndRenderTransactions()"
+                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-600 text-slate-700 appearance-none">
+                        <option value="ALL">Semua Sumber</option>
+                        <option value="Cash">Cash</option>
+                        <option value="E-Wallet">E-Wallet</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- This area scrolls -->
-            <div id="transactionFeed" class="flex-1 p-6 space-y-3 overflow-y-auto bg-slate-50 hide-scrollbar">
+            <div id="transactionFeed" class="flex-1 p-6 space-y-4 overflow-y-auto bg-slate-50 hide-scrollbar">
                 <!-- Loaded dynamically -->
             </div>
         </section>
 
         <!-- ==================== TAB 3: LAPORAN ==================== -->
-        <section id="tab-reports" class="hidden flex-1 flex flex-col overflow-y-auto hide-scrollbar p-6 space-y-6">
-            <h2 class="text-xl font-bold text-slate-800 tracking-tight">Analisis Keuangan</h2>
-
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                <h3 class="font-bold text-slate-700 text-sm">Persentase Kategori</h3>
-                <div class="relative w-full max-w-[200px] mx-auto">
-                    <canvas id="categoryChartCtx"></canvas>
+        <section id="tab-reports" class="hidden flex-1 flex flex-col overflow-hidden">
+            <!-- Header with synchronized selector -->
+            <div class="bg-white border-b border-slate-100 shrink-0 z-10 shadow-sm">
+                <div class="p-6 pb-2">
+                    <h2 class="text-xl font-bold text-slate-800 tracking-tight">Analisis Keuangan</h2>
+                </div>
+                <!-- Horizontal scrollable month selection tabs -->
+                <div id="reportMonthTabs" class="flex gap-6 overflow-x-auto px-6 pb-3 text-xs font-bold text-slate-400 scroll-smooth hide-scrollbar select-none">
+                    <!-- Generated dynamically -->
                 </div>
             </div>
 
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                <h3 class="font-bold text-slate-700 text-sm">Alokasi Sumber Dana</h3>
-                <div class="relative w-full h-[180px]">
-                    <canvas id="sourceChartCtx"></canvas>
-                </div>
-            </div>
+            <div class="flex-1 p-6 space-y-6 overflow-y-auto bg-slate-50 hide-scrollbar">
+                <!-- Doughnut/Line Chart Carousel Card -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 id="reportChartTitle" class="font-bold text-slate-800 text-sm">Persentase Kategori</h3>
+                        <span class="text-[9px] text-teal-600 font-extrabold uppercase bg-teal-50 px-2 py-0.5 rounded-md">Geser untuk ganti</span>
+                    </div>
+                    
+                    <!-- Swipeable Carousel Container -->
+                    <div id="chartCarouselContainer" class="flex overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar w-full select-none">
+                        
+                        <!-- Slide 1: Category Doughnut Chart -->
+                        <div class="w-full max-w-full shrink-0 snap-center snap-always flex items-center justify-between gap-4 overflow-hidden">
+                            <div class="relative w-[130px] h-[130px] shrink-0 flex items-center justify-center">
+                                <canvas id="categoryChartCtx"></canvas>
+                                <div class="absolute flex flex-col items-center justify-center pointer-events-none text-center">
+                                    <span id="chartCenterTotal" class="text-xs font-black text-slate-800 leading-tight">Rp 0</span>
+                                </div>
+                            </div>
+                            <div id="categoryChartLegend" class="flex-1 space-y-1.5 text-[10px] font-bold text-slate-500 max-h-[135px] overflow-y-auto pr-1 hide-scrollbar">
+                                <!-- Loaded dynamically -->
+                            </div>
+                        </div>
 
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                <h3 class="font-bold text-slate-700 text-sm">Aliran Dana Terbesar</h3>
-                <div id="reportTopExpenses" class="space-y-3">
-                    <!-- Loaded dynamically -->
+                        <!-- Slide 2: Daily Line Trend Chart -->
+                        <div class="w-full max-w-full shrink-0 snap-center snap-always flex flex-col justify-between gap-2 overflow-hidden">
+                            <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 px-1">
+                                <div>
+                                    <p>Total: <span id="trendTotalText" class="text-slate-800 font-extrabold">Rp 0</span></p>
+                                    <p class="mt-0.5">Average: <span id="trendAvgText" class="text-slate-800 font-extrabold">Rp 0</span></p>
+                                </div>
+                            </div>
+                            <div class="relative w-full h-[105px]">
+                                <canvas id="trendChartCtx"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Slide 3: Source Doughnut Chart -->
+                        <div class="w-full max-w-full shrink-0 snap-center snap-always flex items-center justify-between gap-4 overflow-hidden">
+                            <div class="relative w-[130px] h-[130px] shrink-0 flex items-center justify-center">
+                                <canvas id="sourceChartCtx"></canvas>
+                                <div class="absolute flex flex-col items-center justify-center pointer-events-none text-center">
+                                    <span id="sourceCenterTotal" class="text-xs font-black text-slate-800 leading-tight">Rp 0</span>
+                                </div>
+                            </div>
+                            <div id="sourceChartLegend" class="flex-1 space-y-1.5 text-[10px] font-bold text-slate-500 max-h-[135px] overflow-y-auto pr-1 hide-scrollbar">
+                                <!-- Loaded dynamically -->
+                            </div>
+                        </div>
+
+                    </div>
+                    
+                    <!-- Carousel Dots Indicator -->
+                    <div class="flex justify-center gap-1.5 pt-1">
+                        <button onclick="switchReportChart(0)" id="chart-dot-0" class="w-1.5 h-1.5 rounded-full bg-teal-600 transition"></button>
+                        <button onclick="switchReportChart(1)" id="chart-dot-1" class="w-1.5 h-1.5 rounded-full bg-slate-300 transition"></button>
+                        <button onclick="switchReportChart(2)" id="chart-dot-2" class="w-1.5 h-1.5 rounded-full bg-slate-300 transition"></button>
+                    </div>
                 </div>
+
+                <!-- Progress Details List -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                    <h3 class="font-bold text-slate-800 text-sm">Rincian Pengeluaran</h3>
+                    <div id="categoryProgressList" class="space-y-4">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Top Expenses List -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                    <h3 class="font-bold text-slate-700 text-sm">Aliran Dana Terbesar</h3>
+                    <div id="reportTopExpenses" class="space-y-3">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+                
+                <!-- Bottom Spacer to prevent navbar overlapping -->
+                <div class="h-28 shrink-0"></div>
             </div>
-            <!-- Bottom Spacer to prevent navbar overlapping -->
-            <div class="h-28 shrink-0"></div>
         </section>
 
         <!-- ==================== TAB 4: SETTINGS ==================== -->
