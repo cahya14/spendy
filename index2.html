@@ -92,7 +92,7 @@
             </div>
 
             <!-- Filters Area -->
-            <div class="px-6 pt-4 pb-2 bg-slate-50 border-b border-slate-100/50 shrink-0 flex gap-2">
+            <div class="px-4 pt-4 pb-2 bg-slate-50 border-b border-slate-100/50 shrink-0 flex gap-2 items-center">
                 <div class="relative flex-1">
                     <select id="filterCategory" onchange="filterAndRenderTransactions()"
                         class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-600 text-slate-700 appearance-none">
@@ -109,6 +109,13 @@
                         <option value="Bank Transfer">Bank Transfer</option>
                     </select>
                 </div>
+                <!-- Manual Sync Button -->
+                <button id="manualSyncBtn" onclick="manualSync()" title="Sinkronisasi data dari cloud"
+                    class="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300 active:scale-95 transition shadow-sm">
+                    <svg id="syncBtnIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
             </div>
 
             <!-- This area scrolls -->
@@ -121,8 +128,16 @@
         <section id="tab-reports" class="hidden flex-1 flex flex-col overflow-hidden">
             <!-- Header with synchronized selector -->
             <div class="bg-white border-b border-slate-100 shrink-0 z-10 shadow-sm">
-                <div class="p-6 pb-2">
+                <div class="px-6 pt-5 pb-2 flex items-center justify-between">
                     <h2 class="text-xl font-bold text-slate-800 tracking-tight">Analisis Keuangan</h2>
+                    <!-- Manual Sync Button for Reports -->
+                    <button id="reportSyncBtn" onclick="manualSync()" title="Sinkronisasi data dari cloud"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300 active:scale-95 transition text-[10px] font-bold shadow-sm">
+                        <svg id="reportSyncIcon" xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Sinkron
+                    </button>
                 </div>
                 <!-- Horizontal scrollable month selection tabs -->
                 <div id="reportMonthTabs" class="flex gap-6 overflow-x-auto px-6 pb-3 text-xs font-bold text-slate-400 scroll-smooth hide-scrollbar select-none">

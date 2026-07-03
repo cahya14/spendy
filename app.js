@@ -497,6 +497,47 @@ function showSyncIndicator() {
 function hideSyncIndicator() {
     const el = document.getElementById('syncIndicator');
     if (el) el.classList.add('hidden');
+    // Stop spinning animation on sync buttons
+    ['syncBtnIcon', 'reportSyncIcon'].forEach(id => {
+        const icon = document.getElementById(id);
+        if (icon) icon.classList.remove('animate-spin');
+    });
+}
+
+/**
+ * manualSync: Triggered by the user pressing the sync button.
+ * Force-fetches fresh data from the spreadsheet and Supabase,
+ * updates the cache, and re-renders the UI.
+ */
+async function manualSync() {
+    // Spin the sync button icon to indicate loading
+    ['syncBtnIcon', 'reportSyncIcon'].forEach(id => {
+        const icon = document.getElementById(id);
+        if (icon) icon.classList.add('animate-spin');
+    });
+    showSyncIndicator();
+    
+    try {
+        const [sheetsRes, supabaseRes] = await Promise.all([
+            fetch(API_URL),
+            supabaseClient.from('incomes').select('*').eq('month', selectedMonth)
+        ]);
+
+        const freshData = await sheetsRes.json();
+        if (supabaseRes.error) throw supabaseRes.error;
+
+        window.expenseList = freshData;
+        window.incomeList  = supabaseRes.data || [];
+        saveExpenseCache(freshData);
+
+        renderAllUI();
+        showGrowl('Data berhasil disinkronkan!');
+    } catch (err) {
+        console.error('Manual Sync Error:', err);
+        showGrowl('Sinkronisasi gagal. Periksa koneksi.', 'error');
+    } finally {
+        hideSyncIndicator();
+    }
 }
 
 function showGrowl(message, type = 'success') {
@@ -609,8 +650,10 @@ function renderAllUI() {
  * 1. Show cached data immediately (no loading screen)
  * 2. Start background fetch with small sync indicator
  * 3. On success: save to cache and refresh UI
+ *
+ * @param {boolean} silent - If true, suppress error growl toasts (for post-CRUD background refreshes)
  */
-async function loadData() {
+async function loadData(silent = false) {
     // ── STEP 1: Show cached data immediately ──────────────────────────────
     const cached = loadExpenseCache();
     if (cached) {
@@ -622,17 +665,26 @@ async function loadData() {
     // ── STEP 2: Background sync from Google Sheets ────────────────────────
     showSyncIndicator();
     try {
-        const [sheetsRes, supabaseRes] = await Promise.all([
+        // Fetch spreadsheet and Supabase in parallel.
+        // Supabase failure is non-fatal — we handle it separately.
+        const [sheetsRes, supabaseResult] = await Promise.all([
             fetch(API_URL),
             supabaseClient.from('incomes').select('*').eq('month', selectedMonth)
+                .then(r => r)
+                .catch(e => ({ data: [], error: e }))  // absorb Supabase network errors
         ]);
 
         const freshData = await sheetsRes.json();
 
-        if (supabaseRes.error) throw supabaseRes.error;
-        window.incomeList = supabaseRes.data || [];
+        // Supabase: log error but don't abort the whole sync
+        if (supabaseResult.error) {
+            console.warn('Supabase income fetch failed (non-fatal):', supabaseResult.error);
+            window.incomeList = window.incomeList || [];
+        } else {
+            window.incomeList = supabaseResult.data || [];
+        }
 
-        // Only update if data actually changed (avoid unnecessary re-render)
+        // Only re-render if data actually changed (avoid flicker)
         const freshStr  = JSON.stringify(freshData);
         const cachedStr = JSON.stringify(window.expenseList);
         const dataChanged = freshStr !== cachedStr;
@@ -645,11 +697,13 @@ async function loadData() {
         }
 
     } catch (err) {
+        // Only reach here if the Google Sheets fetch itself failed
         console.error("Sync Error:", err);
-        if (!cached) {
-            showGrowl("Koneksi cloud terputus. Tidak ada data tersimpan.", "error");
-        } else {
-            showGrowl("Sinkronisasi gagal, menampilkan data cache.", "error");
+        if (!silent) {
+            if (!cached) {
+                showGrowl("Tidak ada koneksi & belum ada data tersimpan.", "error");
+            }
+            // If there's a cache, we already showed it — no need to alarm the user
         }
     } finally {
         hideSyncIndicator();
@@ -719,12 +773,18 @@ function filterAndRenderTransactions() {
         return new Date(dateStr);
     }
 
-    // Sort descending
+    // Sort descending by date, then by rowindex descending (latest entry at top for same date)
     combinedList.sort((a, b) => {
         const dateA = parseDateObj(a.date);
         const dateB = parseDateObj(b.date);
         if (dateA.getTime() !== dateB.getTime()) {
             return dateB.getTime() - dateA.getTime();
+        }
+        // Same date: higher rowindex (newer spreadsheet row) comes first
+        const riA = a.rowindex || 0;
+        const riB = b.rowindex || 0;
+        if (riA !== riB) {
+            return riB - riA;
         }
         if (a.type !== b.type) {
             return a.type === 'income' ? -1 : 1;
@@ -1267,7 +1327,8 @@ document.getElementById('expenseForm').addEventListener('submit', function (e) {
         .then(res => {
             showGrowl(actionType === 'update' ? "Data cloud diperbarui!" : "Transaksi cloud disimpan!");
             resetForm();
-            setTimeout(loadData, 1200);
+            // silent=true: background sync after CRUD — don't show error toast if sheets is slow
+            setTimeout(() => loadData(true), 1200);
         })
         .catch(error => {
             console.error("Fetch API Error: ", error);
@@ -1324,7 +1385,8 @@ function hapusData(rowIndex) {
         })
             .then(() => {
                 showGrowl("Transaksi terhapus dari cloud.");
-                setTimeout(loadData, 1200);
+                // silent=true: background sync after delete — don't show error toast
+                setTimeout(() => loadData(true), 1200);
             })
             .catch((e) => {
                 console.error("Delete Error:", e);
