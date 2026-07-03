@@ -1,7 +1,7 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbzSF2zAHlG6MiOl5EhHTl_b9eHKS-UK8XO7imELEpyILgQIrLR5-o6QequuUgktPCaevg/exec";
 const today = new Date().toISOString().split('T')[0];
 window.expenseList = [];
-let activeTab = 'home';
+let activeTab = 'transactions';
 let catChartInstance = null;
 let srcChartInstance = null;
 
@@ -42,7 +42,7 @@ function addCategory() {
     const input = document.getElementById('newCategoryInput');
     const val = input.value.trim();
     if (!val) return showGrowl("Nama kategori tidak boleh kosong", "error");
-    
+
     let list = getCategories();
     if (list.map(c => c.toLowerCase()).includes(val.toLowerCase())) {
         return showGrowl("Kategori sudah ada", "error");
@@ -160,15 +160,20 @@ function showGrowl(message, type = 'success') {
 
 function switchTab(tabId) {
     activeTab = tabId;
-    const tabs = ['home', 'transactions', 'reports', 'settings'];
+    const tabs = ['budgeting', 'transactions', 'reports', 'settings'];
 
     tabs.forEach(t => {
-        document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tabId);
+        const section = document.getElementById(`tab-${t}`);
+        if (section) section.classList.toggle('hidden', t !== tabId);
         const navBtn = document.getElementById(`nav-${t}`);
-        if (t === tabId) {
-            navBtn.classList.replace('text-slate-400', 'text-teal-600');
-        } else {
-            navBtn.classList.replace('text-teal-600', 'text-slate-400');
+        if (navBtn) {
+            if (t === tabId) {
+                navBtn.classList.remove('text-slate-400');
+                navBtn.classList.add('text-teal-600');
+            } else {
+                navBtn.classList.remove('text-teal-600');
+                navBtn.classList.add('text-slate-400');
+            }
         }
     });
 
@@ -196,11 +201,14 @@ function loadData() {
                 totalAmount += num;
             });
 
-            document.getElementById('homeTotalAmount').innerText = formatRupiah(totalAmount);
-            document.getElementById('homeTotalCount').innerText = `${data.length} Data`;
-            document.getElementById('homeDailyAvg').innerText = formatRupiah(data.length > 0 ? Math.round(totalAmount / 30) : 0);
+            // Null-safe updates (home elements removed, but keep for compatibility)
+            const elTotal = document.getElementById('homeTotalAmount');
+            const elCount = document.getElementById('homeTotalCount');
+            const elAvg   = document.getElementById('homeDailyAvg');
+            if (elTotal) elTotal.innerText = formatRupiah(totalAmount);
+            if (elCount) elCount.innerText = `${data.length} Data`;
+            if (elAvg)   elAvg.innerText   = formatRupiah(data.length > 0 ? Math.round(totalAmount / 30) : 0);
 
-            renderHomeRecent(data);
             filterAndRenderTransactions();
             if (activeTab === 'reports') renderCharts();
         })
@@ -316,7 +324,7 @@ function renderCharts() {
 
     data.forEach(row => {
         let num = Number(String(row.amount).replace(/[^0-9]/g, '')) || 0;
-        
+
         // Group dynamic categories, fallback to first category or 'Other' if deleted
         if (catMap[row.category] !== undefined) {
             catMap[row.category] += num;
@@ -328,7 +336,7 @@ function renderCharts() {
                 catMap[row.category] = num;
             }
         }
-        
+
         if (srcMap[row.source] !== undefined) srcMap[row.source] += num;
         else srcMap['Cash'] += num;
         expenseItems.push({ notes: row.notes, category: row.category, amount: num, date: row.date });
@@ -441,7 +449,7 @@ function siapkanEdit(index) {
     document.getElementById('editRowIndex').value = row.rowindex;
     document.getElementById('date').value = dateForInput;
     document.getElementById('category').value = row.category;
-    
+
     const amountInput = document.getElementById('amount');
     amountInput.value = cleanAmount;
     formatAmountInput(amountInput);
@@ -519,4 +527,11 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCategoryList();
     selectSource('Cash');
     loadData();
+
+    // Handle deep link via URL hash (e.g. index2.html#reports)
+    const hashTab = window.location.hash.replace('#', '');
+    const validTabs = ['budgeting', 'transactions', 'reports', 'settings'];
+    if (hashTab && validTabs.includes(hashTab)) {
+        switchTab(hashTab);
+    }
 });
