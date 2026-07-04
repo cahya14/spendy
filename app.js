@@ -45,20 +45,20 @@ function generateLast24Months() {
     const list = [];
     const now = new Date();
     const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+
     for (let i = 23; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const year = d.getFullYear();
         const monthNum = d.getMonth();
         const value = `${year}-${String(monthNum + 1).padStart(2, '0')}`;
-        
+
         let label = `${monthsShort[monthNum]} ${year}`;
         if (i === 0) {
             label = "This Month";
         } else if (i === 1) {
             label = "Last Month";
         }
-        
+
         list.push({ value, label });
     }
     return list;
@@ -67,23 +67,23 @@ function generateLast24Months() {
 function populateMonthTabs() {
     const container = document.getElementById('reportMonthTabs');
     if (!container) return;
-    
+
     const months = generateLast24Months();
     container.innerHTML = '';
-    
+
     months.forEach(m => {
         const isActive = (m.value === selectedMonth);
-        const activeClasses = isActive 
-            ? 'border-b-2 border-teal-600 text-teal-600 font-extrabold pb-1.5' 
+        const activeClasses = isActive
+            ? 'border-b-2 border-teal-600 text-teal-600 font-extrabold pb-1.5'
             : 'text-slate-400 hover:text-slate-600 pb-1.5';
-        
+
         container.innerHTML += `
         <span onclick="changeMonthYear('${m.value}')" class="cursor-pointer whitespace-nowrap shrink-0 transition ${activeClasses}" id="tab-month-${m.value}">
             ${m.label}
         </span>
         `;
     });
-    
+
     setTimeout(() => {
         const activeTabEl = document.getElementById(`tab-month-${selectedMonth}`);
         if (activeTabEl) {
@@ -97,7 +97,7 @@ let isProgrammaticScroll = false;
 function updateCarouselDots(index) {
     console.log("updateCarouselDots called with index:", index);
     if (isNaN(index) || index < 0 || index > 2) return;
-    
+
     for (let i = 0; i < 3; i++) {
         const dot = document.getElementById(`chart-dot-${i}`);
         if (dot) {
@@ -108,7 +108,7 @@ function updateCarouselDots(index) {
             }
         }
     }
-    
+
     const elTitle = document.getElementById('reportChartTitle');
     if (elTitle) {
         if (index === 0) elTitle.innerText = "Persentase Kategori";
@@ -129,7 +129,7 @@ function switchReportChart(index) {
                 behavior: 'smooth'
             });
             updateCarouselDots(index);
-            
+
             // Release the lock after animation finishes
             setTimeout(() => {
                 isProgrammaticScroll = false;
@@ -141,11 +141,11 @@ function switchReportChart(index) {
 function enableMouseDragScroll(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
-    
+
     let isDown = false;
     let startX;
     let scrollLeft;
-    
+
     container.addEventListener('mousedown', (e) => {
         e.preventDefault();
         isDown = true;
@@ -153,7 +153,7 @@ function enableMouseDragScroll(containerId) {
         scrollLeft = container.scrollLeft;
         container.style.scrollBehavior = 'auto';
     });
-    
+
     container.addEventListener('mouseleave', () => {
         if (!isDown) return;
         isDown = false;
@@ -167,7 +167,7 @@ function enableMouseDragScroll(containerId) {
             setTimeout(() => { isProgrammaticScroll = false; }, 600);
         }
     });
-    
+
     container.addEventListener('mouseup', () => {
         if (!isDown) return;
         isDown = false;
@@ -181,7 +181,7 @@ function enableMouseDragScroll(containerId) {
             setTimeout(() => { isProgrammaticScroll = false; }, 600);
         }
     });
-    
+
     container.addEventListener('mousemove', (e) => {
         if (!isDown) return;
         e.preventDefault();
@@ -194,11 +194,11 @@ function enableMouseDragScroll(containerId) {
 function enableSimpleMouseDragScroll(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
-    
+
     let isDown = false;
     let startX;
     let scrollLeft;
-    
+
     container.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
         isDown = true;
@@ -206,17 +206,17 @@ function enableSimpleMouseDragScroll(containerId) {
         scrollLeft = container.scrollLeft;
         container.style.scrollBehavior = 'auto';
     });
-    
+
     container.addEventListener('mouseleave', () => {
         isDown = false;
         container.style.scrollBehavior = 'smooth';
     });
-    
+
     container.addEventListener('mouseup', () => {
         isDown = false;
         container.style.scrollBehavior = 'smooth';
     });
-    
+
     container.addEventListener('mousemove', (e) => {
         if (!isDown) return;
         e.preventDefault();
@@ -253,7 +253,7 @@ function getCategoryColor(category) {
     if (clean.includes('netflix') || clean.includes('hiburan') || clean.includes('game') || clean.includes('nonton') || clean.includes('movie')) return 'bg-emerald-100 text-emerald-600';
     if (clean.includes('belanja') || clean.includes('shop') || clean.includes('outfit')) return 'bg-purple-100 text-purple-600';
     if (clean.includes('listrik') || clean.includes('tagihan') || clean.includes('bill')) return 'bg-yellow-100 text-yellow-600';
-    
+
     // Hash based color fallback for custom metadata categories
     const colors = [
         "bg-emerald-100 text-emerald-600",
@@ -302,24 +302,24 @@ function formatGroupDate(dateStr) {
     }
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+
     return `${date.getDate()} ${months[date.getMonth()]} ${days[date.getDay()]}`;
 }
 
 function populateMonthYearPickers() {
     const appBarSel = document.getElementById('appBarMonthYear');
-    
+
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
-    
+
     const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    
+
     const optionsHtml = [];
-    
+
     // Generate for previous year, current year, and next year
     for (let y = currentYear - 1; y <= currentYear + 1; y++) {
         for (let m = 0; m < 12; m++) {
@@ -329,12 +329,12 @@ function populateMonthYearPickers() {
             optionsHtml.push(`<option value="${value}" ${selected} class="text-slate-800 font-semibold bg-white">${label}</option>`);
         }
     }
-    
+
     const selectContent = optionsHtml.join('');
     if (appBarSel) appBarSel.innerHTML = selectContent;
-    
+
     selectedMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-    
+
     populateMonthTabs();
 }
 
@@ -347,14 +347,14 @@ function syncIframeMonth() {
 
 function changeMonthYear(val) {
     selectedMonth = val;
-    
+
     const appBarSel = document.getElementById('appBarMonthYear');
     if (appBarSel) appBarSel.value = val;
-    
+
     populateMonthTabs();
-    
+
     loadData();
-    
+
     syncIframeMonth();
 }
 
@@ -466,19 +466,19 @@ function renderMetadataList() {
     const container = document.getElementById('metadataListContainer');
     if (!container) return;
     container.innerHTML = '';
-    
+
     const filter = window.metaFilter || 'ALL';
     const items = window.spendyMetadata.filter(m => filter === 'ALL' || m.jenis === filter);
-    
+
     if (items.length === 0) {
         container.innerHTML = `<p class="text-center py-4 text-[11px] font-semibold text-slate-400">Tidak ada data.</p>`;
         return;
     }
-    
+
     items.forEach(item => {
         const div = document.createElement('div');
         div.className = "flex justify-between items-center py-2.5";
-        
+
         div.innerHTML = `
             <div class="flex items-center gap-2">
                 <span class="text-base">${item.icon_emoji}</span>
@@ -497,18 +497,18 @@ function renderMetadataList() {
 function editMetadata(id) {
     const item = window.spendyMetadata.find(m => Number(m.id) === Number(id));
     if (!item) return;
-    
+
     document.getElementById('metaEditId').value = item.id;
-    
+
     // Check if name is used in window.expenseList
-    const isUsed = (window.expenseList || []).some(t => 
-        (t.category === item.nama && item.jenis === 'Category') || 
+    const isUsed = (window.expenseList || []).some(t =>
+        (t.category === item.nama && item.jenis === 'Category') ||
         (t.source === item.nama && item.jenis === 'Source')
     );
-    
+
     const metaNama = document.getElementById('metaNama');
     metaNama.value = item.nama;
-    
+
     if (isUsed) {
         metaNama.disabled = true;
         metaNama.classList.remove('bg-slate-50');
@@ -518,31 +518,31 @@ function editMetadata(id) {
         metaNama.classList.remove('bg-slate-200', 'text-slate-400');
         metaNama.classList.add('bg-slate-50');
     }
-    
+
     const metaJenis = document.getElementById('metaJenis');
     metaJenis.value = item.jenis;
     metaJenis.disabled = true;
-    
+
     document.getElementById('metaIcon').value = item.icon_emoji;
-    
+
     document.getElementById('metaSubmitBtn').innerText = "Simpan";
     document.getElementById('metaCancelBtn').classList.remove('hidden');
 }
 
 function cancelEditMetadata() {
     document.getElementById('metaEditId').value = '';
-    
+
     const metaNama = document.getElementById('metaNama');
     metaNama.value = '';
     metaNama.disabled = false;
     metaNama.classList.remove('bg-slate-200', 'text-slate-400');
     metaNama.classList.add('bg-slate-50');
-    
+
     const metaJenis = document.getElementById('metaJenis');
     metaJenis.disabled = false;
-    
+
     document.getElementById('metaIcon').value = '';
-    
+
     document.getElementById('metaSubmitBtn').innerText = "Tambah";
     document.getElementById('metaCancelBtn').classList.add('hidden');
 }
@@ -553,21 +553,21 @@ async function saveMetadata(event) {
     const nama = document.getElementById('metaNama').value.trim();
     const jenis = document.getElementById('metaJenis').value;
     const emoji = document.getElementById('metaIcon').value.trim();
-    
+
     if (!nama || !emoji) {
         return showGrowl("Nama dan Emoji tidak boleh kosong!", "error");
     }
-    
+
     if (id) {
         const metaNama = document.getElementById('metaNama');
         const updatePayload = { icon_emoji: emoji };
-        
+
         // If name input is enabled, we allow editing the name too
         if (!metaNama.disabled) {
             // Check unique name for other items
-            const conflict = window.spendyMetadata.some(m => 
-                Number(m.id) !== Number(id) && 
-                m.nama.toLowerCase() === nama.toLowerCase() && 
+            const conflict = window.spendyMetadata.some(m =>
+                Number(m.id) !== Number(id) &&
+                m.nama.toLowerCase() === nama.toLowerCase() &&
                 m.jenis === jenis
             );
             if (conflict) {
@@ -581,9 +581,9 @@ async function saveMetadata(event) {
                 .from('spendy_metadata')
                 .update(updatePayload)
                 .eq('id', id);
-                
+
             if (error) throw error;
-            
+
             showGrowl("Berhasil memperbarui data!");
             cancelEditMetadata();
             await syncMetadataFromSupabase();
@@ -598,19 +598,19 @@ async function saveMetadata(event) {
         if (exists) {
             return showGrowl(`Nama ${jenis === 'Category' ? 'Kategori' : 'Sumber'} sudah digunakan!`, "error");
         }
-        
+
         try {
             const { error } = await supabaseClient
                 .from('spendy_metadata')
                 .insert([{ nama, jenis, icon_emoji: emoji }]);
-                
+
             if (error) {
                 if (error.code === '23505') {
                     return showGrowl("Nama tersebut sudah terdaftar!", "error");
                 }
                 throw error;
             }
-            
+
             showGrowl("Berhasil menambahkan data!");
             document.getElementById('metaNama').value = '';
             document.getElementById('metaIcon').value = '';
@@ -640,17 +640,17 @@ async function deleteMetadata(id) {
 
     const item = window.spendyMetadata.find(m => Number(m.id) === Number(id));
     if (!item) return;
-    
+
     // Check if name is used in window.expenseList
-    const isUsed = (window.expenseList || []).some(t => 
-        (t.category === item.nama && item.jenis === 'Category') || 
+    const isUsed = (window.expenseList || []).some(t =>
+        (t.category === item.nama && item.jenis === 'Category') ||
         (t.source === item.nama && item.jenis === 'Source')
     );
-    
+
     if (isUsed) {
         return showGrowl(`"${item.nama}" sudah digunakan dalam transaksi dan tidak dapat dihapus!`, "error");
     }
-    
+
     _pendingDeleteMetaId = id;
     const confirmTextEl = document.getElementById('metaDeleteConfirmText');
     if (confirmTextEl) {
@@ -670,9 +670,9 @@ async function konfirmasiHapusMeta() {
             .from('spendy_metadata')
             .delete()
             .eq('id', id);
-            
+
         if (error) throw error;
-        
+
         showGrowl("Berhasil menghapus data!");
         await syncMetadataFromSupabase();
     } catch (e) {
@@ -725,7 +725,7 @@ const CACHE_KEY = 'spendy_expense_cache';
 function saveExpenseCache(data) {
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    } catch(e) {
+    } catch (e) {
         console.warn('Cache write failed:', e);
     }
 }
@@ -734,7 +734,7 @@ function loadExpenseCache() {
     try {
         const raw = localStorage.getItem(CACHE_KEY);
         return raw ? JSON.parse(raw) : null;
-    } catch(e) {
+    } catch (e) {
         return null;
     }
 }
@@ -768,13 +768,13 @@ async function manualSync() {
     const icon = document.getElementById('appBarSyncIcon');
     if (icon) icon.classList.add('animate-spin');
     showSyncIndicator();
-    
+
     // Trigger sync in budgeting page if embedded
     const iframe = document.getElementById('budgetingIframe');
     if (iframe && iframe.contentWindow) {
         iframe.contentWindow.postMessage({ type: 'REFRESH' }, '*');
     }
-    
+
     try {
         const [sheetsRes, supabaseRes, supabaseMetaRes] = await Promise.all([
             fetch(API_URL),
@@ -787,7 +787,9 @@ async function manualSync() {
         if (supabaseMetaRes.error) throw supabaseMetaRes.error;
 
         window.expenseList = freshData;
-        window.incomeList  = supabaseRes.data || [];
+        window.incomeList = supabaseRes.data || [];
+        // TAMBAHKAN BARIS DI BAWAH INI:
+        localStorage.setItem('spendy_income_cache', JSON.stringify(window.incomeList));
         window.spendyMetadata = supabaseMetaRes.data || [];
         saveExpenseCache(freshData);
         localStorage.setItem('spendy_metadata_cache', JSON.stringify(supabaseMetaRes.data || []));
@@ -864,7 +866,7 @@ function switchTab(tabId) {
             if (iconEl) iconEl.innerText = "⚙️";
         }
     }
-    
+
     const monthSelector = document.getElementById('appBarMonthSelectorContainer');
     const syncBtn = document.getElementById('appBarSyncBtn');
     if (monthSelector) {
@@ -879,7 +881,7 @@ function switchTab(tabId) {
     } else if (tabId === 'reports') {
         setTimeout(() => {
             renderCharts();
-            
+
             // Scroll the month selection tabs to focus on the active selectedMonth
             const monthTabsContainer = document.getElementById('reportMonthTabs');
             const activeTabEl = document.getElementById(`tab-month-${selectedMonth}`);
@@ -930,12 +932,12 @@ function renderAllUI() {
     const monthlyBalance = monthlyIncomeTotal - monthlyExpensesTotal;
 
     const elExpenses = document.getElementById('totalExpenses');
-    const elIncome   = document.getElementById('totalIncome');
-    const elBalance  = document.getElementById('totalBalance');
+    const elIncome = document.getElementById('totalIncome');
+    const elBalance = document.getElementById('totalBalance');
 
     if (elExpenses) elExpenses.innerText = formatRupiah(monthlyExpensesTotal);
-    if (elIncome)   elIncome.innerText   = formatRupiah(monthlyIncomeTotal);
-    if (elBalance)  elBalance.innerText  = formatRupiah(monthlyBalance);
+    if (elIncome) elIncome.innerText = formatRupiah(monthlyIncomeTotal);
+    if (elBalance) elBalance.innerText = formatRupiah(monthlyBalance);
 
     filterAndRenderTransactions();
     if (activeTab === 'reports') renderCharts();
@@ -951,10 +953,13 @@ function renderAllUI() {
  */
 async function loadData(silent = false) {
     // ── STEP 1: Show cached data immediately ──────────────────────────────
+    // ── STEP 1: Show cached data immediately ──────────────────────────────
     const cached = loadExpenseCache();
-    if (cached) {
-        window.expenseList = cached;
-        window.incomeList  = window.incomeList || [];
+    const cachedIncome = localStorage.getItem('spendy_income_cache'); // Ambil dari local
+
+    if (cached || cachedIncome) {
+        window.expenseList = cached ? cached : [];
+        window.incomeList = cachedIncome ? JSON.parse(cachedIncome) : []; // Masukkan ke state
         renderAllUI();
     }
 
@@ -981,6 +986,7 @@ async function loadData(silent = false) {
             window.incomeList = window.incomeList || [];
         } else {
             window.incomeList = supabaseResult.data || [];
+            localStorage.setItem('spendy_income_cache', JSON.stringify(window.incomeList));
         }
 
         // Supabase Metadata
@@ -994,7 +1000,7 @@ async function loadData(silent = false) {
         }
 
         // Only re-render if data actually changed (avoid flicker)
-        const freshStr  = JSON.stringify(freshData);
+        const freshStr = JSON.stringify(freshData);
         const cachedStr = JSON.stringify(window.expenseList);
         const dataChanged = freshStr !== cachedStr;
 
@@ -1168,7 +1174,7 @@ function filterAndRenderTransactions() {
                 </div>
                 <div class="shrink-0 ml-2">
                     ${item.type === 'expense' ? (
-                        item.rowindex < 0
+                    item.rowindex < 0
                         // ── Optimistic / pending row: buttons disabled ──────────────────
                         ? `<div class="flex items-center gap-1.5 text-[10px] font-bold">
                                <span class="flex items-center gap-1 text-amber-500 bg-amber-50 px-2 py-0.5 rounded-md">
@@ -1181,7 +1187,7 @@ function filterAndRenderTransactions() {
                                <button onclick="siapkanEdit(${item.originalIndex})" class="w-8 h-8 rounded-full bg-teal-50/80 text-teal-600 border border-teal-100 flex items-center justify-center transition active:scale-90 hover:bg-teal-100" title="Edit">✏️</button>
                                <button onclick="hapusData(${item.rowindex})" class="w-8 h-8 rounded-full bg-rose-50/80 text-rose-500 border border-rose-100 flex items-center justify-center transition active:scale-90 hover:bg-rose-100" title="Hapus">🗑️</button>
                            </div>`
-                    ) : ''}
+                ) : ''}
                 </div>
             </div>
             `;
@@ -1265,19 +1271,19 @@ function renderCharts() {
     const categories = (window.spendyMetadata || []).length > 0
         ? (window.spendyMetadata || []).filter(m => m.jenis === 'Category').map(m => m.nama)
         : ['Food', 'Transport', 'Other'];
-    
+
     // 1. Target dates details
     const parts = selectedMonth.split('-');
     const year = parseInt(parts[0]);
     const month = parseInt(parts[1]);
     const daysInMonth = new Date(year, month, 0).getDate();
-    
+
     const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+
     // Initialize maps
     let catMap = {};
     categories.forEach(cat => { catMap[cat] = 0; });
-    
+
     let dateMap = {};
     let dateLabels = [];
     for (let d = 1; d <= daysInMonth; d++) {
@@ -1285,7 +1291,7 @@ function renderCharts() {
         dateMap[label] = 0;
         dateLabels.push(label);
     }
-    
+
     const sources = (window.spendyMetadata || []).length > 0
         ? (window.spendyMetadata || []).filter(m => m.jenis === 'Source').map(m => m.nama)
         : ['Cash', 'E-Wallet', 'Bank Transfer'];
@@ -1340,17 +1346,17 @@ function renderCharts() {
         progressContainer.innerHTML = '';
         const sortedCats = Object.keys(catMap).sort((a, b) => catMap[b] - catMap[a]);
         let progressCount = 0;
-        
+
         sortedCats.forEach(cat => {
             const amt = catMap[cat];
             if (amt === 0) return;
             progressCount++;
-            
+
             const pct = totalExpenses > 0 ? ((amt / totalExpenses) * 100).toFixed(2) : 0;
             const icon = getCategoryIcon(cat);
             const colorClass = getCategoryColor(cat);
             const barColor = getCategoryBarColor(cat);
-            
+
             progressContainer.innerHTML += `
             <div class="space-y-1.5">
                 <div class="flex justify-between items-center text-xs font-bold text-slate-700">
@@ -1397,18 +1403,18 @@ function renderCharts() {
 
     // 5. CHART 1: Category Doughnut Chart
     const baseColors = ['#22c55e', '#f97316', '#3b82f6', '#ec4899', '#a855f7', '#0ea5e9', '#f59e0b', '#10b981', '#6366f1'];
-    
+
     // Update center total text
     const elCenterTotal = document.getElementById('chartCenterTotal');
     if (elCenterTotal) {
         elCenterTotal.innerText = new Intl.NumberFormat('id-ID').format(totalExpenses);
     }
-    
+
     let catLabels = [];
     let catValues = [];
     let catLegendItems = [];
     let catIndex = 0;
-    
+
     Object.keys(catMap).forEach(cat => {
         const amt = catMap[cat];
         if (amt > 0) {
@@ -1464,7 +1470,7 @@ function renderCharts() {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return ` Rp ${new Intl.NumberFormat('id-ID').format(context.raw)}`;
                         }
                     }
@@ -1482,7 +1488,7 @@ function renderCharts() {
 
     const trendCtx = document.getElementById('trendChartCtx').getContext('2d');
     if (trendChartInstance) trendChartInstance.destroy();
-    
+
     const pointColors = dateLabels.map((lbl, idx) => baseColors[idx % baseColors.length]);
     const trendValues = dateLabels.map(lbl => dateMap[lbl]);
 
@@ -1515,7 +1521,7 @@ function renderCharts() {
                     ticks: {
                         font: { size: 9, family: "'Plus Jakarta Sans', sans-serif" },
                         maxTicksLimit: 3,
-                        callback: function(val) {
+                        callback: function (val) {
                             if (val >= 1000) return (val / 1000) + 'k';
                             return val;
                         }
@@ -1526,13 +1532,13 @@ function renderCharts() {
                     ticks: {
                         font: { size: 9, family: "'Plus Jakarta Sans', sans-serif" },
                         autoSkip: false,
-                        callback: function(val, index) {
+                        callback: function (val, index) {
                             const lbl = dateLabels[index];
                             const dayNum = parseInt(lbl.split(' ')[0]);
                             if (dayNum === 1 || dayNum === 8 || dayNum === 15 || dayNum === 22 || dayNum === 29 || dayNum === daysInMonth) {
                                 return lbl;
-                             }
-                             return '';
+                            }
+                            return '';
                         }
                     }
                 }
@@ -1541,7 +1547,7 @@ function renderCharts() {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return ` Rp ${new Intl.NumberFormat('id-ID').format(context.raw)}`;
                         }
                     }
@@ -1555,12 +1561,12 @@ function renderCharts() {
     if (elSourceTotal) {
         elSourceTotal.innerText = new Intl.NumberFormat('id-ID').format(totalExpenses);
     }
-    
+
     let srcLabels = [];
     let srcValues = [];
     let srcLegendItems = [];
     let srcIndex = 0;
-    
+
     Object.keys(srcMap).forEach(src => {
         const amt = srcMap[src];
         if (amt > 0) {
@@ -1615,7 +1621,7 @@ function renderCharts() {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return ` Rp ${new Intl.NumberFormat('id-ID').format(context.raw)}`;
                         }
                     }
@@ -1736,7 +1742,7 @@ function resetForm() {
     document.getElementById('date').value = today;
     document.getElementById('amount').value = '';
     document.getElementById('notes').value = '';
-    
+
     const sourceSelect = document.getElementById('source');
     if (sourceSelect) {
         if ([...sourceSelect.options].some(opt => opt.value === 'Cash')) {
@@ -1838,7 +1844,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 updateCarouselDots(index);
             }
         });
-        
+
         // Enable desktop swipe drag behavior
         enableMouseDragScroll('chartCarouselContainer');
     }
