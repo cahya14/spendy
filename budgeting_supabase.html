@@ -13,6 +13,9 @@
         rel="stylesheet">
 
     <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbwRhTUGRPyCDCe8fSk4j-LiK68uuK6Tgoyzz6msU_V_ZjTs55SV222GNwIzDGPSWjZMnA/exec";
+
+        let activeMappingExpId = null; // Menyimpan ID alokasi yang sedang dibuka modalnya
         tailwind.config = {
             theme: {
                 extend: {
@@ -94,8 +97,9 @@
     <div
         class="bg-gradient-to-br from-teal-500 to-teal-700 rounded-3xl p-5 text-white shadow-[0_8px_20px_rgba(13,148,136,0.15)] relative overflow-hidden animate-slide-up">
         <div class="relative z-10">
-            <p class="text-teal-100 text-[10px] font-bold uppercase tracking-wider mb-1">Sisa Saldo Keseluruhan</p>
-            <h2 id="grandBalance" class="text-3xl font-black tracking-tight mb-5">Rp 0</h2>
+            <p class="hidden text-teal-100 text-[10px] font-bold uppercase tracking-wider mb-1">Sisa Saldo Keseluruhan
+            </p>
+            <h2 id="grandBalance" class="hidden text-3xl font-black tracking-tight mb-5">Rp 0</h2>
 
             <div class="grid grid-cols-2 gap-3 bg-white/10 rounded-2xl p-3.5 border border-white/10 backdrop-blur-md">
                 <div>
@@ -317,6 +321,34 @@
         </div>
     </div>
 
+    <div id="mappingModal"
+        class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div
+            class="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-3xl shadow-2xl animate-slide-up flex flex-col max-h-[85vh]">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <div>
+                    <h2 class="font-bold text-base text-slate-800 tracking-tight">Tautkan Transaksi</h2>
+                    <p id="mappingFormTitle" class="text-[11px] font-bold text-teal-600 mt-0.5">Alokasi: -</p>
+                </div>
+                <button onclick="closeMappingModal()"
+                    class="text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full p-1.5 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="mappingTxList" class="flex-1 overflow-y-auto p-2 bg-slate-50/50 hide-scrollbar">
+            </div>
+
+            <div class="p-5 border-t border-slate-100 shrink-0 bg-white rounded-b-3xl">
+                <button onclick="saveMapping()"
+                    class="w-full py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-[0_4px_15px_rgba(13,148,136,0.3)] active:scale-[0.98] transition">Simpan
+                    Mapping</button><br><br><br><br>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         // --- KONFIGURASI SUPABASE ---
@@ -441,6 +473,7 @@
         }
 
         // --- CORE DATA FETCHING ---
+        // --- CORE DATA FETCHING ---
         async function loadData() {
             if (!currentMonth) {
                 let d = new Date();
@@ -458,6 +491,7 @@
                 document.getElementById('expenseList').innerHTML = "";
                 document.getElementById('duplicateContainer').classList.add('hidden');
 
+                // 1. Fetch Rencana Budgeting dari Supabase
                 const { data: incomesData } = await supabaseClient.from('incomes').select('*').eq('month', currentMonth).order('id', { ascending: true });
                 const { data: expensesData } = await supabaseClient.from('expenses').select('*').eq('month', currentMonth).order('urutan', { ascending: true }).order('id', { ascending: true });
 
@@ -466,6 +500,30 @@
                     expenses: (expensesData || []).map(e => ({ id: e.id, name: e.name, amt: e.amount, sourceId: e.income_id, urutan: e.urutan }))
                 };
                 db[currentMonth] = data;
+
+                // 2. Baca Pengeluaran Real dari Local Storage (Cache Index2)
+                let spentMap = {};
+                try {
+                    const cachedTxs = localStorage.getItem('spendy_expense_cache');
+                    if (cachedTxs) {
+                        const allTxs = JSON.parse(cachedTxs);
+                        allTxs.forEach(tx => {
+                            // Filter by current month (Format Sheet: DD/MM/YYYY)
+                            if (tx.date && tx.expenses_id) {
+                                const parts = tx.date.split('/');
+                                if (parts.length === 3) {
+                                    const txMonth = `${parts[2]}-${parts[1]}`; // YYYY-MM
+                                    if (txMonth === currentMonth) {
+                                        let num = Number(String(tx.amount).replace(/[^0-9]/g, '')) || 0;
+                                        spentMap[tx.expenses_id] = (spentMap[tx.expenses_id] || 0) + num;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.warn("Gagal membaca cache transaksi dari parent", e);
+                }
 
                 // Handle Duplicate Prompt jika kosong
                 if (data.incomes.length === 0 && data.expenses.length === 0) {
@@ -508,7 +566,7 @@
                     if (bals[exp.sourceId]) bals[exp.sourceId].used += Number(exp.amt);
                 });
 
-                // Render Dynamic Balances
+                // Render Dynamic Balances (Total Sisa dari Sumber Pendapatan)
                 let bHtml = "";
                 for (let id in bals) {
                     let b = bals[id], rem = b.amount - b.used;
@@ -535,7 +593,7 @@
                     </div>
                 </div>`).join('');
 
-                // Render Expenses
+                // Render Expenses dengan Progress Bar Real
                 let eHtml = "";
                 data.incomes.forEach(inc => {
                     let its = data.expenses.filter(e => String(e.sourceId) === String(inc.id));
@@ -545,23 +603,49 @@
                         <div class="border border-slate-100 rounded-2xl mb-4 overflow-hidden bg-white shadow-sm">
                             <div class="bg-slate-50 px-4 py-2.5 flex justify-between items-center border-b border-slate-100">
                                 <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Dari: ${inc.name}</span>
-                                <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Sub: ${formatRp(sub)}</span>
+                                <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Alokasi: ${formatRp(sub)}</span>
                             </div>
-                            <div class="px-4 expense-group-body">`;
+                            <div class="px-3 expense-group-body">`;
 
                         its.forEach(ex => {
+                            let allocated = Number(ex.amt);
+                            let spent = spentMap[ex.id] || 0;
+                            let percentage = allocated > 0 ? Math.min(100, Math.round((spent / allocated) * 100)) : 0;
+                            let sisa = allocated - spent;
+
+                            // Logika Warna Progress Bar
+                            let barColor = percentage >= 100 ? 'bg-rose-500' : (percentage > 75 ? 'bg-amber-500' : 'bg-teal-500');
+                            let textColor = percentage >= 100 ? 'text-rose-600' : 'text-slate-500';
+
+                            // LOGIKA TEKS SISA / MELEBIHI ALOKASI
+                            let sisaLabel = sisa < 0 ? 'Melebihi alokasi:' : 'Sisa:';
+                            let sisaColor = sisa < 0 ? 'text-rose-600' : 'text-teal-600';
+                            let sisaDisplay = formatRp(Math.abs(sisa)); // Menghilangkan tanda minus
+
                             eHtml += `
-                                <div class="item-row flex justify-between items-center py-3 border-b border-slate-50 last:border-0 transition" data-id="${ex.id}">
-                                    <div class="flex items-center gap-3">
-                                        <span class="drag-handle text-slate-300 cursor-grab active:cursor-grabbing text-xl">☰</span>
-                                        <div class="flex flex-col gap-0.5">
-                                            <span class="font-bold text-slate-800 text-[13px]">${ex.name}</span>
-                                            <span class="font-extrabold text-slate-500 text-[11px]">${formatRp(ex.amt)}</span>
+                                <div class="item-row py-3 border-b border-slate-50 last:border-0 transition" data-id="${ex.id}">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div class="flex items-center gap-3">
+                                            <span class="drag-handle text-slate-300 cursor-grab active:cursor-grabbing text-xl mt-0.5">☰</span>
+                                            <div class="flex flex-col gap-0.5">
+                                                <button onclick="openMappingModal('${ex.id}', '${ex.name}')" class="font-bold text-teal-700 text-[13px] text-left decoration-teal-300 decoration-dashed underline underline-offset-4 hover:text-teal-800 transition origin-left active:scale-95">${ex.name}</button>
+                                                <span class="font-semibold text-slate-400 text-[10px]">Budget: ${formatRp(allocated)}</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button onclick="editExpense('${ex.id}')" class="w-7 h-7 rounded-full bg-slate-50 border border-slate-100 text-slate-500 flex items-center justify-center text-[10px] transition hover:bg-slate-100 active:scale-90">✏️</button>
+                                            <button onclick="deleteExpense('${ex.id}')" class="w-7 h-7 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center text-[10px] transition hover:bg-rose-100 active:scale-90">🗑️</button>
                                         </div>
                                     </div>
-                                    <div class="flex gap-2">
-                                        <button onclick="editExpense('${ex.id}')" class="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 text-slate-500 flex items-center justify-center text-[10px] transition hover:bg-slate-100 active:scale-90">✏️</button>
-                                        <button onclick="deleteExpense('${ex.id}')" class="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center text-[10px] transition hover:bg-rose-100 active:scale-90">🗑️</button>
+                                    
+                                    <div class="pl-8 pr-1">
+                                        <div class="flex justify-between text-[10px] font-bold mb-1.5">
+                                            <span class="${textColor}">Terpakai: ${formatRp(spent)}</span>
+                                            <span class="${sisaColor}">${sisaLabel} ${sisaDisplay}</span>
+                                        </div>
+                                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                            <div class="h-full rounded-full ${barColor} transition-all duration-500" style="width: ${percentage}%"></div>
+                                        </div>
                                     </div>
                                 </div>`;
                         });
@@ -855,6 +939,159 @@
                     }
                 });
             }; r.readAsText(e.target.files[0]);
+        }
+
+        // --- FITUR MAPPING TRANSAKSI ---
+        function openMappingModal(expId, expName) {
+            activeMappingExpId = expId;
+            document.getElementById('mappingFormTitle').innerText = `Alokasi: ${expName}`;
+
+            // 1. Baca cache transaksi dari localStorage
+            const cachedTxs = JSON.parse(localStorage.getItem('spendy_expense_cache') || '[]');
+
+            // 2. Filter transaksi bulan ini saja
+            let monthTxs = cachedTxs.filter(tx => {
+                if (!tx.date) return false;
+                const parts = tx.date.split('/');
+                if (parts.length === 3) {
+                    const txMonth = `${parts[2]}-${parts[1]}`;
+                    return txMonth === currentMonth;
+                }
+                return false;
+            });
+
+            // 3. Kelompokkan berdasarkan status mapping-nya
+            let mappedToThis = [];
+            let unmapped = [];
+            let mappedToOther = [];
+
+            monthTxs.forEach(tx => {
+                if (String(tx.expenses_id) === String(expId)) {
+                    mappedToThis.push(tx);
+                } else if (!tx.expenses_id) {
+                    unmapped.push(tx);
+                } else {
+                    mappedToOther.push(tx);
+                }
+            });
+
+            // 4. Susun urutan: Milik Sendiri (Atas) -> Kosong -> Milik Lain (Bawah)
+            let allSorted = [...mappedToThis, ...unmapped, ...mappedToOther];
+
+            const listContainer = document.getElementById('mappingTxList');
+            listContainer.innerHTML = '';
+
+            if (allSorted.length === 0) {
+                listContainer.innerHTML = '<div class="text-center py-10 text-xs font-semibold text-slate-400">Tidak ada pengeluaran di bulan ini.</div>';
+            } else {
+                allSorted.forEach(tx => {
+                    let isChecked = String(tx.expenses_id) === String(expId) ? 'checked' : '';
+                    let badge = '';
+                    let opacityClass = '';
+
+                    // Jika dimapping ke tempat lain, berikan badge merah dan buat sedikit pudar
+                    if (tx.expenses_id && String(tx.expenses_id) !== String(expId)) {
+                        let otherName = "Alokasi Lain";
+                        let otherExp = db[currentMonth].expenses.find(e => String(e.id) === String(tx.expenses_id));
+                        if (otherExp) otherName = otherExp.name;
+
+                        badge = `<span class="inline-block text-[9px] bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded border border-rose-100 font-bold ml-1.5 align-middle">Terpakai di: ${otherName}</span>`;
+                        opacityClass = 'opacity-70'; // visual hint bahwa ini milik alokasi lain
+                    }
+
+                    listContainer.innerHTML += `
+                     <label class="flex items-start gap-3 p-3.5 border-b border-slate-200/60 bg-white hover:bg-slate-50 transition cursor-pointer mb-1.5 rounded-xl shadow-sm ${opacityClass}">
+                         <input type="checkbox" class="mapping-checkbox mt-0.5 w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500 transition" value="${tx.rowindex}" ${isChecked} data-original-exp="${tx.expenses_id || ''}">
+                         <div class="flex flex-col flex-1 min-w-0">
+                             <div class="flex justify-between items-start gap-2 mb-1">
+                                 <span class="text-[13px] font-bold text-slate-800 leading-tight">
+                                     ${tx.notes && tx.notes !== '-' ? tx.notes : tx.category}
+                                     ${badge}
+                                 </span>
+                             </div>
+                             <div class="flex justify-between items-center mt-1">
+                                <span class="text-[10px] font-bold text-slate-400">${tx.date} • ${tx.source}</span>
+                                <span class="text-xs font-black text-slate-700">Rp ${new Intl.NumberFormat('id-ID').format(String(tx.amount).replace(/\D/g, ''))}</span>
+                             </div>
+                         </div>
+                     </label>
+                     `;
+                });
+            }
+
+            document.getElementById('mappingModal').classList.remove('hidden');
+        }
+
+        function closeMappingModal() {
+            document.getElementById('mappingModal').classList.add('hidden');
+            activeMappingExpId = null;
+        }
+
+        async function saveMapping() {
+            const checkboxes = document.querySelectorAll('.mapping-checkbox');
+            const cachedTxs = JSON.parse(localStorage.getItem('spendy_expense_cache') || '[]');
+
+            let updatesNeeded = [];
+
+            checkboxes.forEach(cb => {
+                const rowIndex = cb.value;
+                const isChecked = cb.checked;
+                const originalExp = cb.getAttribute('data-original-exp');
+
+                // Tentukan target expenses_id berdasarkan status checkbox
+                let targetExp = isChecked ? activeMappingExpId : (String(originalExp) === String(activeMappingExpId) ? "" : originalExp);
+
+                // Jika terjadi perubahan state check/uncheck
+                if (String(targetExp) !== String(originalExp)) {
+                    let txIndex = cachedTxs.findIndex(t => String(t.rowindex) === String(rowIndex));
+                    if (txIndex > -1) {
+                        cachedTxs[txIndex].expenses_id = targetExp;
+                        cachedTxs[txIndex].mapping_by = targetExp ? 'user' : '';
+                        updatesNeeded.push(cachedTxs[txIndex]);
+                    }
+                }
+            });
+
+            if (updatesNeeded.length > 0) {
+                showLoading();
+
+                // 1. Simpan perubahan ke local storage (agar langsung terasa instan)
+                localStorage.setItem('spendy_expense_cache', JSON.stringify(cachedTxs));
+
+                // 2. Beritahu parent (index2.html) untuk re-render UI-nya
+                window.parent.postMessage({ type: 'REFRESH' }, '*');
+
+                // 3. Render ulang halaman budgeting ini sendiri untuk update progress bar
+                loadData();
+                closeMappingModal();
+                hideLoading();
+                showToast(`${updatesNeeded.length} Transaksi dimapping! ✨`);
+
+                // 4. Lakukan background fetch ke Google Sheets API tanpa memblokir UI
+                updatesNeeded.forEach(tx => {
+                    const payload = {
+                        action: 'update',
+                        rowindex: tx.rowindex,
+                        date: tx.date,
+                        category: tx.category,
+                        amount: tx.amount,
+                        source: tx.source,
+                        notes: tx.notes,
+                        expenses_id: tx.expenses_id,
+                        mapping_by: tx.mapping_by
+                    };
+
+                    fetch(API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(payload)
+                    }).catch(console.error); // Error cloud diabaikan dari frontend agar tidak mengganggu UX
+                });
+
+            } else {
+                closeMappingModal();
+            }
         }
 
         // --- DRAG AND DROP (TOUCH & MOUSE) ---

@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbzSF2zAHlG6MiOl5EhHTl_b9eHKS-UK8XO7imELEpyILgQIrLR5-o6QequuUgktPCaevg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwRhTUGRPyCDCe8fSk4j-LiK68uuK6Tgoyzz6msU_V_ZjTs55SV222GNwIzDGPSWjZMnA/exec";
 const today = new Date().toISOString().split('T')[0];
 window.expenseList = [];
 let activeTab = 'transactions';
@@ -356,6 +356,8 @@ function changeMonthYear(val) {
     loadData();
 
     syncIframeMonth();
+    // TAMBAHKAN BARIS INI:
+    updateBudgetAllocationDropdown();
 }
 
 function formatRupiah(value) {
@@ -402,6 +404,29 @@ async function syncMetadataFromSupabase() {
     } catch (e) {
         console.warn("Failed to sync metadata from Supabase:", e);
     }
+}
+
+async function updateBudgetAllocationDropdown() {
+    const dropdown = document.getElementById('expenses_id');
+    if (!dropdown) return;
+
+    // Ambil data alokasi dari Supabase berdasarkan bulan terpilih
+    const { data, error } = await supabaseClient
+        .from('expenses')
+        .select('id, name')
+        .eq('month', selectedMonth);
+
+    const prevVal = dropdown.value;
+    dropdown.innerHTML = '<option value="">-- Tidak Ditautkan --</option>';
+
+    if (!error && data) {
+        data.forEach(item => {
+            dropdown.innerHTML += `<option value="${item.id}">${item.name}</option>`;
+        });
+    }
+
+    // Pertahankan pilihan sebelumnya jika sedang edit
+    if (prevVal) dropdown.value = prevVal;
 }
 
 function updateCategoryAndSourceDropdowns() {
@@ -461,6 +486,8 @@ function updateCategoryAndSourceDropdowns() {
         }
     }
 }
+
+
 
 function renderMetadataList() {
     const container = document.getElementById('metadataListContainer');
@@ -998,6 +1025,8 @@ async function loadData(silent = false) {
             updateCategoryAndSourceDropdowns();
             renderMetadataList();
         }
+        // TAMBAHKAN BARIS INI:
+        updateBudgetAllocationDropdown();
 
         // Only re-render if data actually changed (avoid flicker)
         const freshStr = JSON.stringify(freshData);
@@ -1645,6 +1674,8 @@ document.getElementById('expenseForm').addEventListener('submit', function (e) {
     const sourceValue = document.getElementById('source').value;
     const notesValue = document.getElementById('notes').value || '-';
     const amountValue = parseInt(rawAmount) || 0;
+    // AMBIL VALUE MAPPING
+    const expensesIdValue = document.getElementById('expenses_id').value;
 
     // ── OPTIMISTIC UPDATE: mutate local list immediately ─────────────────
     if (actionType === 'create') {
@@ -1687,7 +1718,10 @@ document.getElementById('expenseForm').addEventListener('submit', function (e) {
         category: categoryValue,
         amount: amountValue,
         source: sourceValue,
-        notes: notesValue
+        notes: notesValue,
+        // TAMBAHKAN DUA BARIS INI:
+        expenses_id: expensesIdValue,
+        mapping_by: expensesIdValue ? 'user' : ''
     };
 
     showSyncIndicator();
@@ -1720,6 +1754,10 @@ function siapkanEdit(index) {
     document.getElementById('date').value = dateForInput;
     document.getElementById('category').value = row.category;
 
+    // TAMBAHKAN BARIS INI:
+    const expensesDropdown = document.getElementById('expenses_id');
+    if (expensesDropdown) expensesDropdown.value = row.expenses_id || '';
+
     const amountInput = document.getElementById('amount');
     amountInput.value = cleanAmount;
     formatAmountInput(amountInput);
@@ -1743,17 +1781,60 @@ function resetForm() {
     document.getElementById('amount').value = '';
     document.getElementById('notes').value = '';
 
-    const sourceSelect = document.getElementById('source');
-    if (sourceSelect) {
-        if ([...sourceSelect.options].some(opt => opt.value === 'Cash')) {
-            sourceSelect.value = 'Cash';
-        } else if (sourceSelect.options.length > 0) {
-            sourceSelect.selectedIndex = 0;
+    const expensesDropdown = document.getElementById('expenses_id');
+    if (expensesDropdown) expensesDropdown.value = '';
+
+    // --- LOGIKA DEFAULT KATEGORI TERBANYAK ---
+    const mostFrequentCat = getMostFrequentItem('category');
+    const catSelect = document.getElementById('category');
+    if (catSelect) {
+        if (mostFrequentCat && [...catSelect.options].some(opt => opt.value === mostFrequentCat)) {
+            catSelect.value = mostFrequentCat;
+        } else if (catSelect.options.length > 0) {
+            catSelect.selectedIndex = 0; // Fallback ke item pertama jika data kosong
         }
     }
+
+    // --- LOGIKA DEFAULT SUMBER DANA TERBANYAK ---
+    const mostFrequentSrc = getMostFrequentItem('source');
+    const sourceSelect = document.getElementById('source');
+    if (sourceSelect) {
+        if (mostFrequentSrc && [...sourceSelect.options].some(opt => opt.value === mostFrequentSrc)) {
+            sourceSelect.value = mostFrequentSrc;
+        } else if ([...sourceSelect.options].some(opt => opt.value === 'Cash')) {
+            sourceSelect.value = 'Cash'; // Fallback ke Cash
+        } else if (sourceSelect.options.length > 0) {
+            sourceSelect.selectedIndex = 0; // Fallback ke item pertama
+        }
+    }
+
     document.getElementById('modalTitle').innerText = "Catat Transaksi";
     document.getElementById('submitBtn').innerText = "Simpan Transaksi";
     document.getElementById('submitBtn').className = "w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition duration-200 text-base active:scale-[0.98]";
+}
+
+function getMostFrequentItem(type) {
+    const data = window.expenseList || [];
+    if (data.length === 0) return null;
+
+    let counts = {};
+    data.forEach(row => {
+        let val = type === 'category' ? row.category : row.source;
+        // Abaikan data kosong atau strip
+        if (val && val !== '-') {
+            counts[val] = (counts[val] || 0) + 1;
+        }
+    });
+
+    let maxCount = 0;
+    let mostFreq = null;
+    for (let key in counts) {
+        if (counts[key] > maxCount) {
+            maxCount = counts[key];
+            mostFreq = key;
+        }
+    }
+    return mostFreq;
 }
 
 // ── Delete modal state ────────────────────────────────────────────────────────
