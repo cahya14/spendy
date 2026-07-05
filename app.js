@@ -1408,6 +1408,9 @@ function renderCharts() {
 
     // 4. Render Top Expenses List (Aliran Dana Terbesar)
     expenseItems.sort((a, b) => b.amount - a.amount);
+    window.currentTopExpenses = expenseItems; // Simpan ke global untuk fitur Load More
+    window.topExpensesLimit = window.topExpensesLimit || 3;
+    renderTopExpensesList(); // Panggil fungsi helper
     const topListContainer = document.getElementById('reportTopExpenses');
     if (topListContainer) {
         topListContainer.innerHTML = '';
@@ -1518,16 +1521,30 @@ function renderCharts() {
     const trendCtx = document.getElementById('trendChartCtx').getContext('2d');
     if (trendChartInstance) trendChartInstance.destroy();
 
-    const pointColors = dateLabels.map((lbl, idx) => baseColors[idx % baseColors.length]);
-    const trendValues = dateLabels.map(lbl => dateMap[lbl]);
+    // LOGIKA PEMBATAS HARI (Sampai Hari Ini Saja)
+    const now = new Date();
+    let chartDays = daysInMonth;
+    if (year === now.getFullYear() && month === (now.getMonth() + 1)) {
+        chartDays = Math.max(1, now.getDate()); // Batasi chart sampai tanggal hari ini
+    }
+
+    let trendDateLabels = [];
+    let trendValues = [];
+    for (let d = 1; d <= chartDays; d++) {
+        const lbl = `${d} ${monthsShort[month - 1]}`;
+        trendDateLabels.push(lbl);
+        trendValues.push(dateMap[lbl] || 0);
+    }
+
+    const pointColors = trendDateLabels.map((lbl, idx) => baseColors[idx % baseColors.length]);
 
     trendChartInstance = new Chart(trendCtx, {
         type: 'line',
         data: {
-            labels: dateLabels,
+            labels: trendDateLabels, // Pakai label yang sudah dipotong
             datasets: [{
                 label: 'Trend',
-                data: trendValues,
+                data: trendValues,       // Pakai value yang sudah dipotong
                 borderColor: '#14b8a6',
                 backgroundColor: 'rgba(20, 184, 166, 0.05)',
                 fill: true,
@@ -1562,9 +1579,11 @@ function renderCharts() {
                         font: { size: 9, family: "'Plus Jakarta Sans', sans-serif" },
                         autoSkip: false,
                         callback: function (val, index) {
-                            const lbl = dateLabels[index];
+                            const lbl = trendDateLabels[index];
+                            if (!lbl) return '';
                             const dayNum = parseInt(lbl.split(' ')[0]);
-                            if (dayNum === 1 || dayNum === 8 || dayNum === 15 || dayNum === 22 || dayNum === 29 || dayNum === daysInMonth) {
+                            // Tampilkan label tanggal 1, 8, 15, 22, 29, atau hari terakhir bulan/chart
+                            if (dayNum === 1 || dayNum === 8 || dayNum === 15 || dayNum === 22 || dayNum === 29 || dayNum === daysInMonth || dayNum === chartDays) {
                                 return lbl;
                             }
                             return '';
@@ -1658,6 +1677,88 @@ function renderCharts() {
             }
         }
     });
+
+    // 8. Render Panel Pengeluaran per Hari (List Form)
+    const dailyListContainer = document.getElementById('reportDailyExpenses');
+    if (dailyListContainer) {
+        dailyListContainer.innerHTML = '';
+
+        let dailyArr = [];
+        Object.keys(dateMap).forEach(key => {
+            if (dateMap[key] > 0) {
+                let day = parseInt(key.split(' ')[0]);
+                dailyArr.push({ label: key, amount: dateMap[key], day: day });
+            }
+        });
+
+        // Urutkan dari tanggal terbaru (hari ini) ke terlama
+        dailyArr.sort((a, b) => b.day - a.day);
+
+        if (dailyArr.length === 0) {
+            dailyListContainer.innerHTML = '<div class="text-center py-4 text-xs font-semibold text-slate-400">Belum ada pengeluaran harian.</div>';
+        } else {
+            dailyArr.forEach(item => {
+                dailyListContainer.innerHTML += `
+                <div class="flex justify-between items-center py-3 border-b border-slate-50 last:border-b-0">
+                    <span class="text-[11px] font-bold text-slate-700">${item.label} ${year}</span>
+                    <span class="font-black text-rose-600 text-xs">${formatRupiah(item.amount)}</span>
+                </div>
+                `;
+            });
+        }
+    }
+}
+
+function renderTopExpensesList() {
+    const topListContainer = document.getElementById('reportTopExpenses');
+    const btnMore = document.getElementById('btnLoadMoreTop');
+    const btnLess = document.getElementById('btnLoadLessTop');
+    if (!topListContainer) return;
+
+    topListContainer.innerHTML = '';
+    let items = window.currentTopExpenses || [];
+    let limit = window.topExpensesLimit || 3;
+
+    let displayItems = items.slice(0, limit);
+
+    displayItems.forEach(item => {
+        const div = document.createElement('div');
+        div.className = "flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100";
+        div.innerHTML = `
+            <div class="min-w-0 flex-1 pr-2">
+                <p class="text-xs font-bold text-slate-800 truncate">${item.notes && item.notes !== '-' ? item.notes : 'Tanpa catatan'}</p>
+                <p class="text-[10px] font-semibold text-slate-400 mt-0.5">${item.category} • ${item.date}</p>
+            </div>
+            <span class="font-bold text-rose-600 text-xs shrink-0">${formatRupiah(item.amount)}</span>
+        `;
+        topListContainer.appendChild(div);
+    });
+
+    // Tampilkan atau Sembunyikan Tombol Berdasarkan Jumlah Item
+    if (items.length === 0) {
+        topListContainer.innerHTML = '<div class="text-center py-2 text-xs font-semibold text-slate-400">Belum ada data.</div>';
+        if (btnMore) btnMore.classList.add('hidden');
+        if (btnLess) btnLess.classList.add('hidden');
+    } else if (limit < items.length) {
+        if (btnMore) btnMore.classList.remove('hidden');
+        if (btnLess) btnLess.classList.add('hidden');
+    } else if (items.length > 3 && limit >= items.length) {
+        if (btnMore) btnMore.classList.add('hidden');
+        if (btnLess) btnLess.classList.remove('hidden');
+    } else {
+        if (btnMore) btnMore.classList.add('hidden');
+        if (btnLess) btnLess.classList.add('hidden');
+    }
+}
+
+function loadMoreTopExpenses() {
+    window.topExpensesLimit = (window.currentTopExpenses || []).length;
+    renderTopExpensesList();
+}
+
+function loadLessTopExpenses() {
+    window.topExpensesLimit = 3;
+    renderTopExpensesList();
 }
 
 // ==================== SUBMIT FORM HANDLER — OPTIMISTIC UI ====================
@@ -1900,10 +2001,73 @@ function exportToCSV() {
     showGrowl("File CSV terunduh!");
 }
 
+// ==================== EXPORT KESELURUHAN (JSON) ====================
+async function exportAllDataJSON() {
+    showSyncIndicator();
+    try {
+        // 1. Fetch seluruh tabel dari Supabase (tanpa filter bulan)
+        const [incomesRes, expensesRes, metadataRes, sheetsRes] = await Promise.all([
+            supabaseClient.from('incomes').select('*').order('id', { ascending: true }),
+            supabaseClient.from('expenses').select('*').order('id', { ascending: true }),
+            supabaseClient.from('spendy_metadata').select('*').order('id', { ascending: true }),
+            fetch(API_URL) // Fetch langsung dari Google Apps Script
+        ]);
+
+        if (incomesRes.error) throw incomesRes.error;
+        if (expensesRes.error) throw expensesRes.error;
+        if (metadataRes.error) throw metadataRes.error;
+
+        // 2. Parse data transaksi dari Google Sheets
+        const transactionsData = await sheetsRes.json();
+
+        // 3. Susun data menjadi satu objek JSON besar
+        const fullBackup = {
+            export_date: new Date().toISOString(),
+            metadata: metadataRes.data || [],
+            budgeting_incomes: incomesRes.data || [],
+            budgeting_allocations: expensesRes.data || [],
+            transactions: transactionsData || []
+        };
+
+        // 4. Proses pembuatan file dan Trigger Download
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullBackup, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+
+        // Nama file memuat tanggal hari ini
+        const todayStr = new Date().toISOString().split('T')[0];
+        downloadAnchorNode.setAttribute("download", `Spendy_Full_Backup_${todayStr}.json`);
+
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        document.body.removeChild(downloadAnchorNode);
+
+        showGrowl("Backup Keseluruhan (JSON) berhasil diunduh!");
+    } catch (error) {
+        console.error("Export JSON Error:", error);
+        showGrowl("Gagal membuat backup JSON.", "error");
+    } finally {
+        hideSyncIndicator();
+    }
+}
+
 function formatDateForSheets(inputDate) {
     if (!inputDate) return '';
     const parts = inputDate.split('-');
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+// --- FITUR LOGOUT ---
+function logout() {
+    // 1. Hapus status login dari session storage
+    sessionStorage.removeItem('spendy_auth');
+
+    // 2. (Opsional) Bersihkan cache lokal jika ingin data benar-benar bersih saat logout
+    // localStorage.removeItem('spendy_expense_cache'); 
+    // localStorage.removeItem('spendy_metadata_cache');
+
+    // 3. Arahkan kembali ke halaman login
+    window.location.href = 'login.html';
 }
 
 // ==================== FIX: AUTO LOAD ON START ====================

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Login - Spendy Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                    animation: {
+                        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+
+<body class="bg-slate-900 font-sans text-slate-800 antialiased flex items-center justify-center min-h-screen p-4">
+
+    <div
+        class="w-full max-w-md bg-slate-50 rounded-[2rem] shadow-2xl border border-slate-800/10 p-8 space-y-6 overflow-hidden relative animate-slide-up">
+
+        <div class="text-center space-y-2">
+            <div
+                class="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-700 text-white rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(13,148,136,0.3)] mx-auto text-3xl">
+                💰
+            </div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight pt-2">Spendy Premium</h1>
+            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Sistem Manajemen Keuangan Pribadi</p>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4 pt-2">
+            <div id="errorBox"
+                class="hidden bg-rose-50 border border-rose-100 text-rose-600 rounded-xl p-3.5 text-xs font-bold text-center animate-pulse">
+                ⚠️ Username atau Password salah!
+            </div>
+
+            <div>
+                <label class="block font-bold text-slate-700 mb-1.5 text-xs uppercase tracking-wide">Username</label>
+                <input type="text" id="username" placeholder="Masukkan username..." required
+                    class="w-full p-3.5 border border-slate-200 rounded-xl bg-white font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 transition placeholder-slate-300 text-sm">
+            </div>
+
+            <div>
+                <label class="block font-bold text-slate-700 mb-1.5 text-xs uppercase tracking-wide">Password</label>
+                <input type="password" id="password" placeholder="Masukkan password..." required
+                    class="w-full p-3.5 border border-slate-200 rounded-xl bg-white font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 transition placeholder-slate-300 text-sm">
+            </div>
+
+            <div class="pt-4">
+                <button type="submit" id="submitBtn"
+                    class="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition duration-200 text-sm active:scale-[0.98] flex items-center justify-center gap-2">
+                    <span id="btnText">Masuk Ke Aplikasi</span>
+                    <div id="btnSpinner"
+                        class="hidden animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent">
+                    </div>
+                </button>
+            </div>
+        </form>
+
+        <div class="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest pt-4">
+            Protected by Private Database
+        </div>
+
+        <div class="absolute -right-12 -top-12 w-32 h-32 bg-teal-500/10 rounded-full blur-2xl pointer-events-none">
+        </div>
+        <div class="absolute -left-12 -bottom-12 w-32 h-32 bg-teal-600/10 rounded-full blur-2xl pointer-events-none">
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI SUPABASE ---
+        const SUPABASE_URL = 'https://tvchnxhzmdqdabuaeyqy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2Y2hueGh6bWRxZGFidWFleXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwMjUwODIsImV4cCI6MjA5ODYwMTA4Mn0.cZ3lsWfkQAAH-OlwgN0HRVRmzA_3WrMoPtLR3CZ6G2U';
+
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value;
+
+            const errorBox = document.getElementById('errorBox');
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const btnSpinner = document.getElementById('btnSpinner');
+
+            // Hide previous error & Show Loading
+            errorBox.classList.add('hidden');
+            submitBtn.disabled = true;
+            btnText.innerText = "Memverifikasi...";
+            btnSpinner.classList.remove('hidden');
+
+            try {
+                // Query mencocokkan ke tabel accounts Supabase
+                const { data, error } = await supabaseClient
+                    .from('accounts')
+                    .select('*')
+                    .eq('username', u)
+                    .eq('password', p)
+                    .single();
+
+                if (error || !data) {
+                    // Jika data tidak ditemukan atau ada error query
+                    throw new Error("Akun tidak valid");
+                }
+
+                // LOGIN BERHASIL
+                sessionStorage.setItem('spendy_auth', 'berhasil');
+                window.location.href = 'index2.html'; // Pindah ke aplikasi utama
+
+            } catch (err) {
+                // LOGIN GAGAL
+                errorBox.classList.remove('hidden');
+                submitBtn.disabled = false;
+                btnText.innerText = "Masuk Ke Aplikasi";
+                btnSpinner.classList.add('hidden');
+            }
+        }
+
+        // Auto-Check: Jika sudah pernah login di sesi ini, langsung lempar ke index2.html
+        if (sessionStorage.getItem('spendy_auth') === 'berhasil') {
+            window.location.href = 'index2.html';
+        }
+    </script>
+</body>
+
+</html>

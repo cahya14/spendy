@@ -8,6 +8,11 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        // --- SCRIPT PENGAMAN ALESAN PRIVASI ---
+        if (sessionStorage.getItem('spendy_auth') !== 'berhasil') {
+            window.location.href = 'login.html';
+        }
+
         tailwind.config = {
             theme: {
                 extend: {
@@ -230,6 +235,19 @@
                     <div id="reportTopExpenses" class="space-y-3">
                         <!-- Loaded dynamically -->
                     </div>
+                    <button id="btnLoadMoreTop" onclick="loadMoreTopExpenses()"
+                        class="hidden w-full py-2.5 bg-slate-50 text-teal-600 font-bold text-xs rounded-xl border border-slate-100 hover:bg-slate-100 transition active:scale-95">Lihat
+                        Semua</button>
+                    <button id="btnLoadLessTop" onclick="loadLessTopExpenses()"
+                        class="hidden w-full py-2.5 bg-slate-50 text-teal-600 font-bold text-xs rounded-xl border border-slate-100 hover:bg-slate-100 transition active:scale-95">Sembunyikan</button>
+                </div>
+
+                <!-- Daily Expenses List -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                    <h3 class="font-bold text-slate-700 text-sm">Pengeluaran per Hari</h3>
+                    <div id="reportDailyExpenses" class="space-y-1 max-h-[350px] overflow-y-auto pr-1 hide-scrollbar">
+                        <!-- Loaded dynamically -->
+                    </div>
                 </div>
 
                 <!-- Bottom Spacer to prevent navbar overlapping -->
@@ -329,6 +347,43 @@
                     </div>
                 </a>
             </div>
+
+            <button onclick="logout()"
+                class="w-full mt-2 bg-rose-50 text-rose-600 border border-rose-100 rounded-2xl py-4 text-sm font-bold hover:bg-rose-100 transition active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                </svg>
+                Keluar Aplikasi
+            </button>
+
+
+            <button onclick="exportToCSV()"
+                class="w-full px-5 py-4 text-left flex items-center justify-between text-slate-700 hover:bg-slate-50 transition active:bg-slate-100">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" stroke-width="2"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                        </path>
+                    </svg>
+                    <span class="text-sm font-semibold">Unduh Rekap Data (CSV)</span>
+                </div>
+            </button>
+
+            <!-- Tombol Export JSON -->
+            <button onclick="exportAllDataJSON()"
+                class="w-full px-5 py-4 text-left flex items-center justify-between text-slate-700 hover:bg-slate-50 transition active:bg-slate-100">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" stroke-width="2"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125">
+                        </path>
+                    </svg>
+                    <span class="text-sm font-semibold">Unduh Backup Keseluruhan (JSON)</span>
+                </div>
+            </button>
 
             <div class="text-center text-[11px] text-slate-400 font-medium pt-4">
                 Spendy App v2.1 • Native Web PWA
